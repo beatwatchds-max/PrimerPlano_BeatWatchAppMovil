@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Paleta principal de BEATWATCH -->
+    <color name="beatwatch_background">#F3F6FA</color>   <!-- Fondo general gris azulado claro -->
+    <color name="beatwatch_blue">#4A90E2</color>         <!-- Azul principal (botón, texto logo) -->
+    <color name="beatwatch_dark_blue">#0E2A47</color>    <!-- Azul oscuro (título y labels) -->
+    <color name="beatwatch_heart">#FF6B75</color>        <!-- Rojo/rosado del corazón -->
+    <color name="white">#FFFFFF</color>                  <!-- Card y textos sobre azul -->
+    <color name="input_border">#D8E0EA</color>           <!-- Borde del input -->
+    <color name="placeholder_gray">#9AA7B4</color>       <!-- Placeholder gris suave -->
+</resources>
