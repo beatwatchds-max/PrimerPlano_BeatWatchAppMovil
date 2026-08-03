@@ -195,7 +195,8 @@ class RegistroArritmiaActivity : AppCompatActivity() {
                 Log.d("ARRITMIA_API", "isSuccessful: ${response.isSuccessful}")
 
                 if (response.isSuccessful) {
-                    Log.d("ARRITMIA_API", "Body: ${response.body()}")
+                    val rawBody = response.body()?.string().orEmpty()
+                    Log.d("ARRITMIA_API", "Body exitoso raw: $rawBody")
 
                     sessionManager.guardarEstadoFormularios(
                         perfilCompletado = true,

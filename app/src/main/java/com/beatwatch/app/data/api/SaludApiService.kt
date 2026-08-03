@@ -1,7 +1,7 @@
 package com.beatwatch.app.data.api
 
 import com.beatwatch.app.data.model.RegistroArritmiaRequest
-import com.beatwatch.app.data.model.RegistroArritmiaResponse
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.Header
@@ -18,5 +18,5 @@ interface SaludApiService {
     suspend fun registrarArritmia(
         @Header("Authorization") authorization: String,
         @Body request: RegistroArritmiaRequest
-    ): Response<RegistroArritmiaResponse>
+    ): Response<ResponseBody>
 }
