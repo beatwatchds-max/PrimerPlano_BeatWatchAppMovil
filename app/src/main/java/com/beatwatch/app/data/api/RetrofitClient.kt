@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    private const val BASE_URL = "https://backend-beatwatch.onrender.com/"
+    const val BASE_URL = "https://backend-beatwatch.onrender.com/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
@@ -35,5 +35,17 @@ object RetrofitClient {
 
     val saludApiService: SaludApiService by lazy {
         retrofit.create(SaludApiService::class.java)
+    }
+
+    val dispositivoApiService: DispositivoApiService by lazy {
+        retrofit.create(DispositivoApiService::class.java)
+    }
+
+    val historialApiService: HistorialApiService by lazy {
+        retrofit.create(HistorialApiService::class.java)
+    }
+
+    val tableroApiService: TableroApiService by lazy {
+        retrofit.create(TableroApiService::class.java)
     }
 }

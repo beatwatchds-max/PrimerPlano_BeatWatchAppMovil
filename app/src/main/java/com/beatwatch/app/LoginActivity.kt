@@ -150,8 +150,8 @@ class LoginActivity : AppCompatActivity() {
                             finish()
                         }
                         perfilCompletado && diagnosticoCompletado -> {
-                            Log.d("LOGIN_FLOW", "Perfil y diagnóstico completados -> InicioActivity")
-                            startActivity(Intent(this@LoginActivity, InicioActivity::class.java))
+                            Log.d("LOGIN_FLOW", "Perfil y diagnóstico completados -> ConectarDispositivoActivity")
+                            startActivity(Intent(this@LoginActivity, ConectarDispositivoActivity::class.java))
                             finish()
                         }
                     }

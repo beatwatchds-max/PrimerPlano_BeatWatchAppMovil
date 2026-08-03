@@ -208,7 +208,7 @@ class RegistroArritmiaActivity : AppCompatActivity() {
                         Toast.LENGTH_LONG
                     ).show()
 
-                    startActivity(Intent(this@RegistroArritmiaActivity, InicioActivity::class.java))
+                    startActivity(Intent(this@RegistroArritmiaActivity, ConectarDispositivoActivity::class.java))
                     finish()
                 } else {
                     val errorBody = response.errorBody()?.string()
