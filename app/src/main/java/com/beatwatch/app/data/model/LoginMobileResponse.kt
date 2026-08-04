@@ -13,5 +13,6 @@ data class LoginMobileResponse(
     val idLicencia: String? = null,
     val perfilCompletado: Boolean? = null,
     val diagnosticoCompletado: Boolean? = null,
+    val dispositivoVinculado: Boolean? = null,
     val pacienteId: String? = null
 )

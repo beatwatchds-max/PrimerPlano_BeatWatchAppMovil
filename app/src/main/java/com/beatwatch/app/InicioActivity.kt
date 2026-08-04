@@ -20,7 +20,7 @@ class InicioActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_inicio)
 
-        sessionManager = SessionManager(this)
+        sessionManager = SessionManager.getInstance(this)
 
         tvNombrePaciente = findViewById(R.id.tvNombrePaciente)
         tvPerfilEstado = findViewById(R.id.tvPerfilEstado)

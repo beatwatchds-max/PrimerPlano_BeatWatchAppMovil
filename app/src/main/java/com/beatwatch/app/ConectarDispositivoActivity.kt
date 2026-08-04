@@ -58,7 +58,7 @@ class ConectarDispositivoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_conectar_dispositivo)
 
-        sessionManager = SessionManager(this)
+        sessionManager = SessionManager.getInstance(this)
         dispositivoRepository = DispositivoRepository()
 
         btnBuscar = findViewById(R.id.btnBuscar)
@@ -73,6 +73,8 @@ class ConectarDispositivoActivity : AppCompatActivity() {
         }
 
         btnOmitir.setOnClickListener {
+            sessionManager.guardarDispositivoVinculado(false)
+            Log.d("DISPOSITIVO_FLOW", "Dispositivo omitido. dispositivoVinculado: ${sessionManager.isDispositivoVinculado()}")
             Toast.makeText(this, "Puedes conectar tu dispositivo más tarde", Toast.LENGTH_LONG).show()
             startActivity(Intent(this, MainActivity::class.java))
             finish()
@@ -223,6 +225,9 @@ class ConectarDispositivoActivity : AppCompatActivity() {
 
                 if (response.isSuccessful) {
                     Log.d("DISPOSITIVO_API", "Body: ${response.body()}")
+
+                    sessionManager.guardarDispositivoVinculado(true)
+                    Log.d("DISPOSITIVO_FLOW", "Dispositivo vinculado guardado: ${sessionManager.isDispositivoVinculado()}")
 
                     Toast.makeText(
                         this@ConectarDispositivoActivity,

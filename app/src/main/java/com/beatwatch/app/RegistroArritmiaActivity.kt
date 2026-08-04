@@ -44,7 +44,7 @@ class RegistroArritmiaActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_registro_arritmia)
 
-        sessionManager = SessionManager(this)
+        sessionManager = SessionManager.getInstance(this)
         saludRepository = SaludRepository()
 
         inicializarVistas()
@@ -209,7 +209,11 @@ class RegistroArritmiaActivity : AppCompatActivity() {
                         Toast.LENGTH_LONG
                     ).show()
 
-                    startActivity(Intent(this@RegistroArritmiaActivity, ConectarDispositivoActivity::class.java))
+                    if (sessionManager.isDispositivoVinculado()) {
+                        startActivity(Intent(this@RegistroArritmiaActivity, MainActivity::class.java))
+                    } else {
+                        startActivity(Intent(this@RegistroArritmiaActivity, ConectarDispositivoActivity::class.java))
+                    }
                     finish()
                 } else {
                     val errorBody = response.errorBody()?.string()

@@ -3,10 +3,35 @@ package com.beatwatch.app.utils
 import android.content.Context
 import android.content.SharedPreferences
 
-class SessionManager(context: Context) {
+class SessionManager private constructor(context: Context) {
 
     private val prefs: SharedPreferences =
-        context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        context.applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+
+    companion object {
+        @Volatile
+        private var instance: SessionManager? = null
+
+        fun getInstance(context: Context): SessionManager {
+            return instance ?: synchronized(this) {
+                instance ?: SessionManager(context).also { instance = it }
+            }
+        }
+
+        private const val PREF_NAME = "beatwatch_session"
+        private const val KEY_TOKEN = "token"
+        private const val KEY_USUARIO_ID = "usuarioId"
+        private const val KEY_NOMBRE = "nombre"
+        private const val KEY_CORREO = "correo"
+        private const val KEY_TELEFONO = "telefono"
+        private const val KEY_ROL = "rol"
+        private const val KEY_ID_LICENCIA = "idLicencia"
+        private const val KEY_IS_LOGGED_IN = "isLoggedIn"
+        private const val KEY_PACIENTE_ID = "pacienteId"
+        private const val KEY_PERFIL_COMPLETADO = "perfilCompletado"
+        private const val KEY_DIAGNOSTICO_COMPLETADO = "diagnosticoCompletado"
+        private const val KEY_DISPOSITIVO_VINCULADO = "dispositivoVinculado"
+    }
 
     fun guardarSesion(
         token: String,
@@ -67,24 +92,19 @@ class SessionManager(context: Context) {
     fun isDiagnosticoCompletado(): Boolean =
         prefs.getBoolean(KEY_DIAGNOSTICO_COMPLETADO, false)
 
+    fun guardarDispositivoVinculado(dispositivoVinculado: Boolean) {
+        prefs.edit()
+            .putBoolean(KEY_DISPOSITIVO_VINCULADO, dispositivoVinculado)
+            .apply()
+    }
+
+    fun isDispositivoVinculado(): Boolean {
+        return prefs.getBoolean(KEY_DISPOSITIVO_VINCULADO, false)
+    }
+
     fun isLoggedIn(): Boolean = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
 
     fun cerrarSesion() {
         prefs.edit().clear().apply()
-    }
-
-    companion object {
-        private const val PREF_NAME = "beatwatch_session"
-        private const val KEY_TOKEN = "token"
-        private const val KEY_USUARIO_ID = "usuarioId"
-        private const val KEY_NOMBRE = "nombre"
-        private const val KEY_CORREO = "correo"
-        private const val KEY_TELEFONO = "telefono"
-        private const val KEY_ROL = "rol"
-        private const val KEY_ID_LICENCIA = "idLicencia"
-        private const val KEY_IS_LOGGED_IN = "isLoggedIn"
-        private const val KEY_PACIENTE_ID = "pacienteId"
-        private const val KEY_PERFIL_COMPLETADO = "perfilCompletado"
-        private const val KEY_DIAGNOSTICO_COMPLETADO = "diagnosticoCompletado"
     }
 }

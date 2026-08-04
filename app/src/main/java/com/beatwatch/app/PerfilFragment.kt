@@ -46,7 +46,7 @@ class PerfilFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        sessionManager = SessionManager(requireContext())
+        sessionManager = SessionManager.getInstance(requireContext())
         pacienteRepository = PacienteRepository()
 
         tvPerfilNombre = view.findViewById(R.id.tvPerfilNombre)

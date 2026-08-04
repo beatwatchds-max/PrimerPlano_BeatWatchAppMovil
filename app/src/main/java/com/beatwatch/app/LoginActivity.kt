@@ -27,7 +27,7 @@ class LoginActivity : AppCompatActivity() {
         etToken = findViewById(R.id.etToken)
         btnLogin = findViewById(R.id.btnLogin)
         authRepository = AuthRepository()
-        sessionManager = SessionManager(this)
+        sessionManager = SessionManager.getInstance(this)
 
         btnLogin.setOnClickListener {
             val token = etToken.text.toString().trim()
@@ -65,6 +65,7 @@ class LoginActivity : AppCompatActivity() {
                     val pacienteId = body?.pacienteId.orEmpty()
                     val perfilCompletado = body?.perfilCompletado ?: false
                     val diagnosticoCompletado = body?.diagnosticoCompletado ?: false
+                    val dispositivoVinculado = body?.dispositivoVinculado ?: false
 
                     Log.d("LOGIN_FLOW", "Body login: $body")
                     Log.d("LOGIN_FLOW", "Login exitoso")
@@ -74,6 +75,7 @@ class LoginActivity : AppCompatActivity() {
                     Log.d("LOGIN_FLOW", "pacienteId: $pacienteId")
                     Log.d("LOGIN_FLOW", "perfilCompletado: $perfilCompletado")
                     Log.d("LOGIN_FLOW", "diagnosticoCompletado: $diagnosticoCompletado")
+                    Log.d("LOGIN_FLOW", "dispositivoVinculado: $dispositivoVinculado")
 
                     if (jwt.isNullOrBlank()) {
                         Log.e("LOGIN_API", "Token JWT vacío en respuesta: $body")
@@ -124,6 +126,8 @@ class LoginActivity : AppCompatActivity() {
                         diagnosticoCompletado = diagnosticoCompletado
                     )
 
+                    sessionManager.guardarDispositivoVinculado(dispositivoVinculado)
+
                     Log.d("SESSION_DEBUG", "Sesión guardada")
                     Log.d("SESSION_DEBUG", "token existe: ${sessionManager.getToken().isNotBlank()}")
                     Log.d("SESSION_DEBUG", "usuarioId guardado: ${sessionManager.getUsuarioId()}")
@@ -131,6 +135,7 @@ class LoginActivity : AppCompatActivity() {
                     Log.d("SESSION_DEBUG", "pacienteId guardado: ${sessionManager.getPacienteId()}")
                     Log.d("SESSION_DEBUG", "perfilCompletado guardado: ${sessionManager.isPerfilCompletado()}")
                     Log.d("SESSION_DEBUG", "diagnosticoCompletado guardado: ${sessionManager.isDiagnosticoCompletado()}")
+                    Log.d("SESSION_DEBUG", "dispositivoVinculado guardado: ${sessionManager.isDispositivoVinculado()}")
 
                     Toast.makeText(
                         this@LoginActivity,
@@ -144,14 +149,22 @@ class LoginActivity : AppCompatActivity() {
                             startActivity(Intent(this@LoginActivity, RegistroPacienteActivity::class.java))
                             finish()
                         }
+
                         perfilCompletado && !diagnosticoCompletado -> {
-                            Log.d("LOGIN_FLOW", "Perfil completado y diagnóstico no completado -> RegistroArritmiaActivity")
+                            Log.d("LOGIN_FLOW", "Perfil completado, diagnóstico no completado -> RegistroArritmiaActivity")
                             startActivity(Intent(this@LoginActivity, RegistroArritmiaActivity::class.java))
                             finish()
                         }
-                        perfilCompletado && diagnosticoCompletado -> {
-                            Log.d("LOGIN_FLOW", "Perfil y diagnóstico completados -> ConectarDispositivoActivity")
+
+                        perfilCompletado && diagnosticoCompletado && !dispositivoVinculado -> {
+                            Log.d("LOGIN_FLOW", "Perfil y diagnóstico completados, dispositivo no vinculado -> ConectarDispositivoActivity")
                             startActivity(Intent(this@LoginActivity, ConectarDispositivoActivity::class.java))
+                            finish()
+                        }
+
+                        perfilCompletado && diagnosticoCompletado && dispositivoVinculado -> {
+                            Log.d("LOGIN_FLOW", "Flujo completo, dispositivo vinculado -> MainActivity")
+                            startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                             finish()
                         }
                     }

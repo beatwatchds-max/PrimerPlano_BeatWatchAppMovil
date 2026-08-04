@@ -46,7 +46,7 @@ class HistorialFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        sessionManager = SessionManager(requireContext())
+        sessionManager = SessionManager.getInstance(requireContext())
         historialRepository = HistorialRepository()
 
         weeklyTrendView = view.findViewById(R.id.weeklyTrendView)

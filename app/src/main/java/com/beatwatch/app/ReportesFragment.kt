@@ -64,7 +64,7 @@ class ReportesFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        sessionManager = SessionManager(requireContext())
+        sessionManager = SessionManager.getInstance(requireContext())
         reportesRepository = ReportesRepository()
 
         progressReportes = view.findViewById(R.id.progressReportes)
