@@ -1,17 +1,36 @@
 package com.beatwatch.app
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.AlertDialog
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.text.InputType
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.SwitchCompat
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.beatwatch.app.data.model.ActualizarDispositivoRequest
+import com.beatwatch.app.data.model.DispositivoResponse
+import com.beatwatch.app.data.model.EmparejarDispositivoRequest
+import com.beatwatch.app.data.repository.DispositivoRepository
 import com.beatwatch.app.data.repository.PacienteRepository
+import com.beatwatch.app.ui.adapters.DispositivoAdapter
 import com.beatwatch.app.utils.SessionManager
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -30,6 +49,36 @@ class InicioFragment : Fragment() {
     private lateinit var btnTomarPulso: View
     private lateinit var sessionManager: SessionManager
     private lateinit var pacienteRepository: PacienteRepository
+    private lateinit var dispositivoRepository: DispositivoRepository
+
+    private lateinit var rvDispositivos: RecyclerView
+    private lateinit var tvCargandoDispositivos: TextView
+    private lateinit var emptyDispositivos: LinearLayout
+    private lateinit var tvAgregarDispositivo: TextView
+    private lateinit var btnAgregarDispositivoEmpty: View
+    private lateinit var adapter: DispositivoAdapter
+
+    private var bluetoothAdapter: BluetoothAdapter? = null
+
+    private val bluetoothPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions.values.all { it }
+        if (granted) {
+            buscarDispositivosBluetooth()
+        } else {
+            Toast.makeText(
+                requireContext(),
+                "Permiso Bluetooth requerido para buscar dispositivos.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -44,6 +93,7 @@ class InicioFragment : Fragment() {
 
         sessionManager = SessionManager.getInstance(requireContext())
         pacienteRepository = PacienteRepository()
+        dispositivoRepository = DispositivoRepository()
 
         tvFrecuenciaCardiaca = view.findViewById(R.id.tvFrecuenciaCardiaca)
         tvEstadoFrecuencia = view.findViewById(R.id.tvEstadoFrecuencia)
@@ -55,10 +105,27 @@ class InicioFragment : Fragment() {
         switchReloj = view.findViewById(R.id.switchReloj)
         btnTomarPulso = view.findViewById(R.id.btnTomarPulso)
 
+        rvDispositivos = view.findViewById(R.id.rvDispositivos)
+        tvCargandoDispositivos = view.findViewById(R.id.tvCargandoDispositivos)
+        emptyDispositivos = view.findViewById(R.id.emptyDispositivos)
+        tvAgregarDispositivo = view.findViewById(R.id.tvAgregarDispositivo)
+        btnAgregarDispositivoEmpty = view.findViewById(R.id.btnAgregarDispositivoEmpty)
+
+        adapter = DispositivoAdapter(
+            mutableListOf(),
+            onEditarAlias = { dispositivo -> mostrarDialogoEditarAlias(dispositivo) },
+            onEliminarDispositivo = { dispositivo -> mostrarDialogoEliminarDispositivo(dispositivo) }
+        )
+
+        rvDispositivos.layoutManager = LinearLayoutManager(requireContext())
+        rvDispositivos.adapter = adapter
+
         cargarDatosPaciente()
+        cargarDispositivos()
         configurarSwitchReloj()
         configurarBotonPulso()
         configurarCardsRapidas(view)
+        configurarListenersDispositivos()
     }
 
     private fun cargarDatosPaciente() {
@@ -139,6 +206,396 @@ class InicioFragment : Fragment() {
         }
     }
 
+    private fun cargarDispositivos() {
+        val jwt = sessionManager.getToken()
+        val pacienteId = sessionManager.getPacienteId()
+
+        Log.d("SESSION_DEBUG", "JWT existe: ${jwt.isNotBlank()}")
+        Log.d("SESSION_DEBUG", "pacienteId actual: $pacienteId")
+
+        if (jwt.isBlank()) {
+            tvCargandoDispositivos.text = "Sesión inválida."
+            return
+        }
+
+        if (pacienteId.isBlank()) {
+            tvCargandoDispositivos.text = "No se encontró el paciente en sesión."
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                Log.d("DISPOSITIVOS_GET", "GET api/Dispositivos iniciado")
+
+                val response = dispositivoRepository.obtenerDispositivos(jwt)
+
+                Log.d("DISPOSITIVOS_GET", "HTTP code: ${response.code()}")
+                Log.d("DISPOSITIVOS_GET", "cantidad recibida: ${response.body()?.size ?: 0}")
+
+                if (response.isSuccessful) {
+                    val body = response.body().orEmpty()
+                    val propios = body.filter { it.idPaciente == pacienteId }
+
+                    Log.d("DISPOSITIVOS_GET", "cantidad filtrada por paciente: ${propios.size}")
+
+                    adapter.actualizarLista(propios)
+
+                    if (propios.isEmpty()) {
+                        rvDispositivos.visibility = View.GONE
+                        emptyDispositivos.visibility = View.VISIBLE
+                    } else {
+                        rvDispositivos.visibility = View.VISIBLE
+                        emptyDispositivos.visibility = View.GONE
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("DISPOSITIVOS_GET", "ErrorBody: $errorBody")
+
+                    tvCargandoDispositivos.text = "No se pudieron cargar los dispositivos."
+                    rvDispositivos.visibility = View.GONE
+                    emptyDispositivos.visibility = View.VISIBLE
+                }
+            } catch (e: IOException) {
+                Log.e("DISPOSITIVOS_GET", "Error de conexión", e)
+                tvCargandoDispositivos.text = "No se pudieron cargar los dispositivos."
+            } catch (e: Exception) {
+                Log.e("DISPOSITIVOS_GET", "Error inesperado", e)
+                tvCargandoDispositivos.text = "Error al cargar dispositivos."
+            } finally {
+                tvCargandoDispositivos.visibility = View.GONE
+            }
+        }
+    }
+
+    private fun configurarListenersDispositivos() {
+        tvAgregarDispositivo.setOnClickListener {
+            verificarPermisosBluetooth()
+        }
+
+        btnAgregarDispositivoEmpty.setOnClickListener {
+            verificarPermisosBluetooth()
+        }
+    }
+
+    private fun verificarPermisosBluetooth() {
+        if (bluetoothAdapter == null) {
+            Toast.makeText(requireContext(), "Este dispositivo no soporta Bluetooth", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        if (!bluetoothAdapter!!.isEnabled) {
+            Toast.makeText(requireContext(), "Activa el Bluetooth para buscar dispositivos.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val permisosFaltantes = mutableListOf<String>()
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_SCAN)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                permisosFaltantes.add(Manifest.permission.BLUETOOTH_SCAN)
+            }
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                permisosFaltantes.add(Manifest.permission.BLUETOOTH_CONNECT)
+            }
+            if (permisosFaltantes.isNotEmpty()) {
+                bluetoothPermissionLauncher.launch(permisosFaltantes.toTypedArray())
+            } else {
+                buscarDispositivosBluetooth()
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                bluetoothPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION))
+            } else {
+                buscarDispositivosBluetooth()
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun buscarDispositivosBluetooth() {
+        val context = requireContext()
+        val dispositivos = bluetoothAdapter?.bondedDevices
+
+        if (dispositivos.isNullOrEmpty()) {
+            Toast.makeText(context, "No hay dispositivos Bluetooth emparejados.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val dispositivosList = dispositivos.toList()
+
+        val items = dispositivosList.map { device ->
+            "${device.name ?: "Desconocido"}\n${device.address ?: ""}"
+        }.toTypedArray()
+
+        AlertDialog.Builder(context)
+            .setTitle("Selecciona un dispositivo")
+            .setItems(items) { _, which ->
+                seleccionarDispositivoBluetooth(dispositivosList[which])
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun seleccionarDispositivoBluetooth(device: BluetoothDevice) {
+        val context = requireContext()
+        val jwt = sessionManager.getToken()
+        val pacienteId = sessionManager.getPacienteId()
+
+        if (jwt.isBlank()) {
+            Toast.makeText(context, "Sesión inválida. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
+            sessionManager.cerrarSesion()
+            redirigirLogin()
+            return
+        }
+
+        if (pacienteId.isBlank()) {
+            Toast.makeText(context, "No se encontró el paciente en sesión.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val alias = device.name ?: "Reloj inteligente"
+        val mac = device.address ?: ""
+        val numeroSerie = mac.replace(":", "")
+
+        val request = EmparejarDispositivoRequest(
+            numeroSerie = numeroSerie,
+            alias = alias,
+            tipoDispositivo = "Smartwatch",
+            codigoModelo = alias,
+            codigoDispositivo = mac,
+            sistemaOperativo = "Android",
+            idPaciente = pacienteId
+        )
+
+        emparejarDesdeBluetooth(jwt, request)
+    }
+
+    private fun emparejarDesdeBluetooth(jwt: String, request: EmparejarDispositivoRequest) {
+        val context = requireContext()
+
+        lifecycleScope.launch {
+            try {
+                Log.d("DISPOSITIVOS_POST", "POST api/Dispositivos/emparejar")
+                Log.d("DISPOSITIVOS_POST", "idPaciente: ${request.idPaciente}")
+                Log.d("DISPOSITIVOS_POST", "alias: ${request.alias}")
+                Log.d("DISPOSITIVOS_POST", "codigoDispositivo: ${request.codigoDispositivo}")
+
+                val response = dispositivoRepository.emparejarDispositivo(jwt, request)
+
+                Log.d("DISPOSITIVOS_POST", "HTTP code: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    Toast.makeText(context, "Dispositivo enlazado correctamente", Toast.LENGTH_SHORT).show()
+                    cargarDispositivos()
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("DISPOSITIVOS_POST", "ErrorBody: $errorBody")
+
+                    val mensaje = when (response.code()) {
+                        400 -> "Datos inválidos. Verifica el dispositivo."
+                        401 -> {
+                            sessionManager.cerrarSesion()
+                            redirigirLogin()
+                            "Sesión expirada. Inicia sesión nuevamente."
+                        }
+                        in 500..599 -> "Error del servidor. Intenta más tarde."
+                        else -> "Error inesperado: ${response.code()}"
+                    }
+                    Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+                }
+            } catch (e: IOException) {
+                Log.e("DISPOSITIVOS_POST", "Error de conexión", e)
+                Toast.makeText(context, "No se pudo conectar con el servidor", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Log.e("DISPOSITIVOS_POST", "Error inesperado", e)
+                Toast.makeText(context, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun mostrarDialogoEditarAlias(dispositivo: DispositivoResponse) {
+        val context = requireContext()
+        val id = dispositivo.id ?: dispositivo.dispositivoId
+
+        if (id.isNullOrBlank()) {
+            Toast.makeText(context, "No se encontró el id del dispositivo.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val layout = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 24)
+        }
+
+        val etAlias = createEditText(context, InputType.TYPE_CLASS_TEXT, dispositivo.alias ?: "")
+        etAlias.hint = "Nuevo alias"
+
+        layout.addView(createLabel(context, "Alias"))
+        layout.addView(etAlias)
+
+        val dialog = AlertDialog.Builder(context)
+            .setTitle("Editar alias")
+            .setView(layout)
+            .setPositiveButton("Guardar", null)
+            .setNegativeButton("Cancelar") { d, _ -> d.dismiss() }
+            .create()
+
+        dialog.show()
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val nuevoAlias = etAlias.text.toString().trim()
+
+            if (nuevoAlias.isEmpty()) {
+                etAlias.error = "Alias requerido"
+                return@setOnClickListener
+            }
+
+            if (nuevoAlias == dispositivo.alias) {
+                Toast.makeText(context, "El alias es el mismo.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val jwt = sessionManager.getToken()
+            if (jwt.isBlank()) {
+                Toast.makeText(context, "Sesión inválida. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+
+            val request = ActualizarDispositivoRequest(
+                numeroSerie = dispositivo.numeroSerie,
+                alias = nuevoAlias,
+                tipoDispositivo = dispositivo.tipoDispositivo,
+                codigoModelo = dispositivo.codigoModelo,
+                codigoDispositivo = dispositivo.codigoDispositivo,
+                sistemaOperativo = dispositivo.sistemaOperativo,
+                idPaciente = dispositivo.idPaciente ?: sessionManager.getPacienteId()
+            )
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardando..."
+
+            lifecycleScope.launch {
+                try {
+                    Log.d("DISPOSITIVOS_PUT", "PUT api/Dispositivos/$id")
+                    Log.d("DISPOSITIVOS_PUT", "alias anterior: ${dispositivo.alias}")
+                    Log.d("DISPOSITIVOS_PUT", "alias nuevo: $nuevoAlias")
+
+                    val response = dispositivoRepository.actualizarDispositivo(jwt, id, request)
+
+                    Log.d("DISPOSITIVOS_PUT", "HTTP code: ${response.code()}")
+
+                    if (response.isSuccessful) {
+                        Toast.makeText(context, "Alias actualizado correctamente.", Toast.LENGTH_SHORT).show()
+                        dialog.dismiss()
+                        cargarDispositivos()
+                    } else {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("DISPOSITIVOS_PUT", "ErrorBody: $errorBody")
+
+                        val mensaje = when (response.code()) {
+                            400 -> "Datos inválidos. Verifica la información."
+                            401 -> {
+                                sessionManager.cerrarSesion()
+                                redirigirLogin()
+                                "Sesión expirada. Inicia sesión nuevamente."
+                            }
+                            404 -> "Dispositivo no encontrado."
+                            in 500..599 -> "Error del servidor. Intenta más tarde."
+                            else -> "Error inesperado: ${response.code()}"
+                        }
+                        Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+
+                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardar"
+                    }
+                } catch (e: IOException) {
+                    Log.e("DISPOSITIVOS_PUT", "Error de conexión", e)
+                    Toast.makeText(context, "No se pudo conectar con el servidor", Toast.LENGTH_LONG).show()
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardar"
+                } catch (e: Exception) {
+                    Log.e("DISPOSITIVOS_PUT", "Error inesperado", e)
+                    Toast.makeText(context, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardar"
+                }
+            }
+        }
+    }
+
+    private fun mostrarDialogoEliminarDispositivo(dispositivo: DispositivoResponse) {
+        val context = requireContext()
+        val id = dispositivo.id ?: dispositivo.dispositivoId
+
+        if (id.isNullOrBlank()) {
+            Toast.makeText(context, "No se encontró el id del dispositivo.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val jwt = sessionManager.getToken()
+        if (jwt.isBlank()) {
+            Toast.makeText(context, "Sesión inválida. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        AlertDialog.Builder(context)
+            .setTitle("Eliminar dispositivo")
+            .setMessage("¿Deseas eliminar este dispositivo?")
+            .setPositiveButton("Eliminar") { _, _ ->
+                eliminarDispositivo(jwt, id, dispositivo)
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun eliminarDispositivo(jwt: String, id: String, dispositivo: DispositivoResponse) {
+        val context = requireContext()
+
+        lifecycleScope.launch {
+            try {
+                Log.d("DISPOSITIVOS_DELETE", "DELETE api/Dispositivos/$id")
+                Log.d("DISPOSITIVOS_DELETE", "idPaciente: ${dispositivo.idPaciente}")
+                Log.d("DISPOSITIVOS_DELETE", "alias: ${dispositivo.alias}")
+
+                val response = dispositivoRepository.eliminarDispositivo(jwt, id)
+
+                Log.d("DISPOSITIVOS_DELETE", "HTTP code: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    Toast.makeText(context, "Dispositivo eliminado correctamente", Toast.LENGTH_SHORT).show()
+                    cargarDispositivos()
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("DISPOSITIVOS_DELETE", "ErrorBody: $errorBody")
+
+                    val mensaje = when (response.code()) {
+                        401 -> {
+                            sessionManager.cerrarSesion()
+                            redirigirLogin()
+                            "Sesión expirada. Inicia sesión nuevamente."
+                        }
+                        404 -> "Dispositivo no encontrado."
+                        in 500..599 -> "Error del servidor. Intenta más tarde."
+                        else -> "Error inesperado: ${response.code()}"
+                    }
+                    Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+                }
+            } catch (e: IOException) {
+                Log.e("DISPOSITIVOS_DELETE", "Error de conexión", e)
+                Toast.makeText(context, "No se pudo conectar con el servidor", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Log.e("DISPOSITIVOS_DELETE", "Error inesperado", e)
+                Toast.makeText(context, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private fun redirigirLogin() {
         startActivity(Intent(requireContext(), LoginActivity::class.java))
         activity?.finish()
@@ -185,6 +642,25 @@ class InicioFragment : Fragment() {
             activity?.findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(
                 R.id.bottomNavigation
             )?.selectedItemId = R.id.nav_reportes
+        }
+    }
+
+    private fun createEditText(context: android.content.Context, inputType: Int, value: String): EditText {
+        return EditText(context).apply {
+            setBackgroundResource(R.drawable.bg_edit_text)
+            this.inputType = inputType
+            setText(value)
+            setPadding(24, 16, 24, 16)
+            textSize = 14f
+        }
+    }
+
+    private fun createLabel(context: android.content.Context, text: String): TextView {
+        return TextView(context).apply {
+            this.text = text
+            setTextColor(0xFF6B7A90.toInt())
+            textSize = 13f
+            setPadding(4, 16, 4, 8)
         }
     }
 }
