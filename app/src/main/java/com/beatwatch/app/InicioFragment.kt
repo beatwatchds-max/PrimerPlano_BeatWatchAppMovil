@@ -1,13 +1,7 @@
 package com.beatwatch.app
 
-import android.Manifest
-import android.annotation.SuppressLint
 import android.app.AlertDialog
-import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothDevice
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.text.InputType
 import android.util.Log
@@ -18,16 +12,13 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.SwitchCompat
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.beatwatch.app.data.model.ActualizarDispositivoRequest
 import com.beatwatch.app.data.model.DispositivoResponse
-import com.beatwatch.app.data.model.EmparejarDispositivoRequest
 import com.beatwatch.app.data.repository.DispositivoRepository
 import com.beatwatch.app.data.repository.PacienteRepository
 import com.beatwatch.app.ui.adapters.DispositivoAdapter
@@ -57,28 +48,6 @@ class InicioFragment : Fragment() {
     private lateinit var tvAgregarDispositivo: TextView
     private lateinit var btnAgregarDispositivoEmpty: View
     private lateinit var adapter: DispositivoAdapter
-
-    private var bluetoothAdapter: BluetoothAdapter? = null
-
-    private val bluetoothPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted = permissions.values.all { it }
-        if (granted) {
-            buscarDispositivosBluetooth()
-        } else {
-            Toast.makeText(
-                requireContext(),
-                "Permiso Bluetooth requerido para buscar dispositivos.",
-                Toast.LENGTH_LONG
-            ).show()
-        }
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -152,14 +121,10 @@ class InicioFragment : Fragment() {
         lifecycleScope.launch {
             try {
                 Log.d("PACIENTE_INFO", "Endpoint: api/Pacientes/usuario/$usuarioId")
-                Log.d("PACIENTE_INFO", "JWT existe: ${jwt.isNotBlank()}")
-                Log.d("PACIENTE_INFO", "usuarioId: $usuarioId")
 
                 val response = pacienteRepository.obtenerPacientePorUsuarioId(jwt, usuarioId)
 
                 Log.d("PACIENTE_INFO", "HTTP code: ${response.code()}")
-                Log.d("PACIENTE_INFO", "isSuccessful: ${response.isSuccessful}")
-                Log.d("PACIENTE_INFO", "Body: ${response.body()}")
 
                 if (response.isSuccessful) {
                     val paciente = response.body()
@@ -269,153 +234,11 @@ class InicioFragment : Fragment() {
 
     private fun configurarListenersDispositivos() {
         tvAgregarDispositivo.setOnClickListener {
-            verificarPermisosBluetooth()
+            startActivity(Intent(requireContext(), ConectarDispositivoActivity::class.java))
         }
 
         btnAgregarDispositivoEmpty.setOnClickListener {
-            verificarPermisosBluetooth()
-        }
-    }
-
-    private fun verificarPermisosBluetooth() {
-        if (bluetoothAdapter == null) {
-            Toast.makeText(requireContext(), "Este dispositivo no soporta Bluetooth", Toast.LENGTH_LONG).show()
-            return
-        }
-
-        if (!bluetoothAdapter!!.isEnabled) {
-            Toast.makeText(requireContext(), "Activa el Bluetooth para buscar dispositivos.", Toast.LENGTH_LONG).show()
-            return
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val permisosFaltantes = mutableListOf<String>()
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_SCAN)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                permisosFaltantes.add(Manifest.permission.BLUETOOTH_SCAN)
-            }
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                permisosFaltantes.add(Manifest.permission.BLUETOOTH_CONNECT)
-            }
-            if (permisosFaltantes.isNotEmpty()) {
-                bluetoothPermissionLauncher.launch(permisosFaltantes.toTypedArray())
-            } else {
-                buscarDispositivosBluetooth()
-            }
-        } else {
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                bluetoothPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION))
-            } else {
-                buscarDispositivosBluetooth()
-            }
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun buscarDispositivosBluetooth() {
-        val context = requireContext()
-        val dispositivos = bluetoothAdapter?.bondedDevices
-
-        if (dispositivos.isNullOrEmpty()) {
-            Toast.makeText(context, "No hay dispositivos Bluetooth emparejados.", Toast.LENGTH_LONG).show()
-            return
-        }
-
-        val dispositivosList = dispositivos.toList()
-
-        val items = dispositivosList.map { device ->
-            "${device.name ?: "Desconocido"}\n${device.address ?: ""}"
-        }.toTypedArray()
-
-        AlertDialog.Builder(context)
-            .setTitle("Selecciona un dispositivo")
-            .setItems(items) { _, which ->
-                seleccionarDispositivoBluetooth(dispositivosList[which])
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun seleccionarDispositivoBluetooth(device: BluetoothDevice) {
-        val context = requireContext()
-        val jwt = sessionManager.getToken()
-        val pacienteId = sessionManager.getPacienteId()
-
-        if (jwt.isBlank()) {
-            Toast.makeText(context, "Sesión inválida. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
-            sessionManager.cerrarSesion()
-            redirigirLogin()
-            return
-        }
-
-        if (pacienteId.isBlank()) {
-            Toast.makeText(context, "No se encontró el paciente en sesión.", Toast.LENGTH_LONG).show()
-            return
-        }
-
-        val alias = device.name ?: "Reloj inteligente"
-        val mac = device.address ?: ""
-        val numeroSerie = mac.replace(":", "")
-
-        val request = EmparejarDispositivoRequest(
-            numeroSerie = numeroSerie,
-            alias = alias,
-            tipoDispositivo = "Smartwatch",
-            codigoModelo = alias,
-            codigoDispositivo = mac,
-            sistemaOperativo = "Android",
-            idPaciente = pacienteId
-        )
-
-        emparejarDesdeBluetooth(jwt, request)
-    }
-
-    private fun emparejarDesdeBluetooth(jwt: String, request: EmparejarDispositivoRequest) {
-        val context = requireContext()
-
-        lifecycleScope.launch {
-            try {
-                Log.d("DISPOSITIVOS_POST", "POST api/Dispositivos/emparejar")
-                Log.d("DISPOSITIVOS_POST", "idPaciente: ${request.idPaciente}")
-                Log.d("DISPOSITIVOS_POST", "alias: ${request.alias}")
-                Log.d("DISPOSITIVOS_POST", "codigoDispositivo: ${request.codigoDispositivo}")
-
-                val response = dispositivoRepository.emparejarDispositivo(jwt, request)
-
-                Log.d("DISPOSITIVOS_POST", "HTTP code: ${response.code()}")
-
-                if (response.isSuccessful) {
-                    Toast.makeText(context, "Dispositivo enlazado correctamente", Toast.LENGTH_SHORT).show()
-                    cargarDispositivos()
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("DISPOSITIVOS_POST", "ErrorBody: $errorBody")
-
-                    val mensaje = when (response.code()) {
-                        400 -> "Datos inválidos. Verifica el dispositivo."
-                        401 -> {
-                            sessionManager.cerrarSesion()
-                            redirigirLogin()
-                            "Sesión expirada. Inicia sesión nuevamente."
-                        }
-                        in 500..599 -> "Error del servidor. Intenta más tarde."
-                        else -> "Error inesperado: ${response.code()}"
-                    }
-                    Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
-                }
-            } catch (e: IOException) {
-                Log.e("DISPOSITIVOS_POST", "Error de conexión", e)
-                Toast.makeText(context, "No se pudo conectar con el servidor", Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                Log.e("DISPOSITIVOS_POST", "Error inesperado", e)
-                Toast.makeText(context, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
-            }
+            startActivity(Intent(requireContext(), ConectarDispositivoActivity::class.java))
         }
     }
 
@@ -433,10 +256,15 @@ class InicioFragment : Fragment() {
             setPadding(48, 24, 48, 24)
         }
 
-        val etAlias = createEditText(context, InputType.TYPE_CLASS_TEXT, dispositivo.alias ?: "")
-        etAlias.hint = "Nuevo alias"
+        val etAlias = EditText(context).apply {
+            setBackgroundResource(R.drawable.bg_edit_text)
+            inputType = InputType.TYPE_CLASS_TEXT
+            setText(dispositivo.alias ?: "")
+            hint = "Nuevo alias"
+            setPadding(24, 16, 24, 16)
+            textSize = 14f
+        }
 
-        layout.addView(createLabel(context, "Alias"))
         layout.addView(etAlias)
 
         val dialog = AlertDialog.Builder(context)
@@ -560,7 +388,6 @@ class InicioFragment : Fragment() {
         lifecycleScope.launch {
             try {
                 Log.d("DISPOSITIVOS_DELETE", "DELETE api/Dispositivos/$id")
-                Log.d("DISPOSITIVOS_DELETE", "idPaciente: ${dispositivo.idPaciente}")
                 Log.d("DISPOSITIVOS_DELETE", "alias: ${dispositivo.alias}")
 
                 val response = dispositivoRepository.eliminarDispositivo(jwt, id)
@@ -642,25 +469,6 @@ class InicioFragment : Fragment() {
             activity?.findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(
                 R.id.bottomNavigation
             )?.selectedItemId = R.id.nav_reportes
-        }
-    }
-
-    private fun createEditText(context: android.content.Context, inputType: Int, value: String): EditText {
-        return EditText(context).apply {
-            setBackgroundResource(R.drawable.bg_edit_text)
-            this.inputType = inputType
-            setText(value)
-            setPadding(24, 16, 24, 16)
-            textSize = 14f
-        }
-    }
-
-    private fun createLabel(context: android.content.Context, text: String): TextView {
-        return TextView(context).apply {
-            this.text = text
-            setTextColor(0xFF6B7A90.toInt())
-            textSize = 13f
-            setPadding(4, 16, 4, 8)
         }
     }
 }

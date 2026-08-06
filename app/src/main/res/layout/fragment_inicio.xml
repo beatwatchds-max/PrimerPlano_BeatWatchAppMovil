@@ -409,7 +409,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:padding="4dp"
-                    android:text="+ Bluetooth"
+                    android:text="+ Agregar Dispositivo"
                     android:textColor="@color/beatwatch_blue"
                     android:textSize="14sp"
                     android:textStyle="bold" />

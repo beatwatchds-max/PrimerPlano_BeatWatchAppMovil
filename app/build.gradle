@@ -46,4 +46,7 @@ dependencies {
 
     // Lifecycle (lifecycleScope)
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.4'
+
+    // ZXing QR Scanner
+    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
 }

@@ -1,56 +1,51 @@
 package com.beatwatch.app
 
-import android.Manifest
-import android.annotation.SuppressLint
-import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothDevice
-import android.content.BroadcastReceiver
-import android.content.Context
+import android.app.AlertDialog
 import android.content.Intent
-import android.content.IntentFilter
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
+import android.text.InputType
 import android.util.Log
 import android.view.View
-import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.beatwatch.app.data.model.EmparejarDispositivoRequest
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.beatwatch.app.data.model.ActualizarDispositivoRequest
+import com.beatwatch.app.data.model.DispositivoResponse
+import com.beatwatch.app.data.model.QrDevicePayload
+import com.beatwatch.app.data.model.SesionEmparejamientoRequest
 import com.beatwatch.app.data.repository.DispositivoRepository
+import com.beatwatch.app.ui.adapters.DispositivoAdapter
 import com.beatwatch.app.utils.SessionManager
+import com.google.gson.Gson
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.launch
 import java.io.IOException
 
 class ConectarDispositivoActivity : AppCompatActivity() {
 
-    private lateinit var btnBuscar: AppCompatButton
+    private lateinit var btnEscanearQR: AppCompatButton
     private lateinit var btnOmitir: AppCompatButton
-    private lateinit var dispositivosContainer: LinearLayout
-    private lateinit var tvSinDispositivos: TextView
+    private lateinit var rvDispositivos: RecyclerView
+    private lateinit var tvCargandoDispositivos: TextView
+    private lateinit var emptyDispositivos: LinearLayout
     private lateinit var sessionManager: SessionManager
     private lateinit var dispositivoRepository: DispositivoRepository
+    private lateinit var adapter: DispositivoAdapter
 
-    private var bluetoothAdapter: BluetoothAdapter? = null
+    private val gson = Gson()
 
-    private val bluetoothPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted = permissions.values.all { it }
-        if (granted) {
-            buscarDispositivos()
-        } else {
-            Toast.makeText(
-                this,
-                "Permiso Bluetooth requerido para buscar dispositivos.",
-                Toast.LENGTH_LONG
-            ).show()
+    private val qrLauncher = registerForActivityResult(
+        ScanContract()
+    ) { result ->
+        if (result.contents != null) {
+            procesarCodigoQR(result.contents)
         }
     }
 
@@ -61,15 +56,23 @@ class ConectarDispositivoActivity : AppCompatActivity() {
         sessionManager = SessionManager.getInstance(this)
         dispositivoRepository = DispositivoRepository()
 
-        btnBuscar = findViewById(R.id.btnBuscar)
+        btnEscanearQR = findViewById(R.id.btnEscanearQR)
         btnOmitir = findViewById(R.id.btnOmitir)
-        dispositivosContainer = findViewById(R.id.dispositivosContainer)
-        tvSinDispositivos = findViewById(R.id.tvSinDispositivos)
+        rvDispositivos = findViewById(R.id.rvDispositivos)
+        tvCargandoDispositivos = findViewById(R.id.tvCargandoDispositivos)
+        emptyDispositivos = findViewById(R.id.emptyDispositivos)
 
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        adapter = DispositivoAdapter(
+            mutableListOf(),
+            onEditarAlias = { dispositivo -> mostrarDialogoEditarAlias(dispositivo) },
+            onEliminarDispositivo = { dispositivo -> mostrarDialogoEliminarDispositivo(dispositivo) }
+        )
 
-        btnBuscar.setOnClickListener {
-            verificarPermisosBluetooth()
+        rvDispositivos.layoutManager = LinearLayoutManager(this)
+        rvDispositivos.adapter = adapter
+
+        btnEscanearQR.setOnClickListener {
+            iniciarEscaneoQR()
         }
 
         btnOmitir.setOnClickListener {
@@ -79,191 +82,303 @@ class ConectarDispositivoActivity : AppCompatActivity() {
             startActivity(Intent(this, MainActivity::class.java))
             finish()
         }
+
+        cargarDispositivos()
     }
 
-    private fun verificarPermisosBluetooth() {
-        if (bluetoothAdapter == null) {
-            Toast.makeText(this, "Este dispositivo no soporta Bluetooth", Toast.LENGTH_LONG).show()
-            return
+    private fun iniciarEscaneoQR() {
+        val options = ScanOptions().apply {
+            setPrompt("Apunta al código QR de tu reloj")
+            setBeepEnabled(true)
+            setOrientationLocked(true)
+            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
         }
-
-        if (!bluetoothAdapter!!.isEnabled) {
-            Toast.makeText(
-                this,
-                "Activa el Bluetooth para buscar dispositivos.",
-                Toast.LENGTH_LONG
-            ).show()
-            return
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val permisosFaltantes = mutableListOf<String>()
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                permisosFaltantes.add(Manifest.permission.BLUETOOTH_SCAN)
-            }
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                permisosFaltantes.add(Manifest.permission.BLUETOOTH_CONNECT)
-            }
-            if (permisosFaltantes.isNotEmpty()) {
-                bluetoothPermissionLauncher.launch(permisosFaltantes.toTypedArray())
-            } else {
-                buscarDispositivos()
-            }
-        } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                bluetoothPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION))
-            } else {
-                buscarDispositivos()
-            }
-        }
+        qrLauncher.launch(options)
     }
 
-    @SuppressLint("MissingPermission")
-    private fun buscarDispositivos() {
-        dispositivosContainer.removeAllViews()
-        tvSinDispositivos.visibility = View.GONE
-        dispositivosContainer.visibility = View.VISIBLE
+    private fun procesarCodigoQR(contenido: String) {
+        Log.d("DEVICE_QR", "QR leído: $contenido")
 
-        val dispositivos = bluetoothAdapter?.bondedDevices
+        try {
+            val payload = gson.fromJson(contenido, QrDevicePayload::class.java)
 
-        if (dispositivos.isNullOrEmpty()) {
-            dispositivosContainer.visibility = View.GONE
-            tvSinDispositivos.visibility = View.VISIBLE
-            return
-        }
+            if (payload.numeroSerie.isNullOrBlank()) {
+                Toast.makeText(this, "QR inválido: falta número de serie", Toast.LENGTH_LONG).show()
+                return
+            }
 
-        for (device in dispositivos) {
-            val itemView = layoutInflater.inflate(
-                android.R.layout.simple_list_item_2,
-                dispositivosContainer,
-                false
+            val jwt = sessionManager.getToken()
+            if (jwt.isBlank()) {
+                Toast.makeText(this, "Sesión inválida. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
+                sessionManager.cerrarSesion()
+                startActivity(Intent(this, LoginActivity::class.java))
+                finish()
+                return
+            }
+
+            val request = SesionEmparejamientoRequest(
+                numeroSerie = payload.numeroSerie,
+                alias = payload.alias,
+                tipoDispositivo = payload.tipoDispositivo,
+                codigoModelo = payload.codigoModelo,
+                codigoDispositivo = payload.codigoDispositivo,
+                sistemaOperativo = payload.sistemaOperativo,
+                versionAplicacion = payload.versionAplicacion
             )
-            val text1 = itemView.findViewById<TextView>(android.R.id.text1)
-            val text2 = itemView.findViewById<TextView>(android.R.id.text2)
 
-            text1.text = device.name ?: "Dispositivo desconocido"
-            text2.text = device.address ?: ""
+            emparejarPorQR(jwt, request)
 
-            itemView.setOnClickListener {
-                seleccionarDispositivo(device)
-            }
-
-            dispositivosContainer.addView(itemView)
+        } catch (e: Exception) {
+            Log.e("DEVICE_QR", "Error al parsear QR: ${e.message}")
+            Toast.makeText(this, "QR inválido. El código no contiene datos válidos del dispositivo.", Toast.LENGTH_LONG).show()
         }
     }
 
-    @SuppressLint("MissingPermission")
-    private fun seleccionarDispositivo(device: BluetoothDevice) {
-        val jwt = sessionManager.getToken()
-        val idPaciente = sessionManager.getPacienteId()
+    private fun emparejarPorQR(jwt: String, request: SesionEmparejamientoRequest) {
+        Toast.makeText(this, "Emparejando dispositivo...", Toast.LENGTH_SHORT).show()
 
-        if (jwt.isBlank()) {
-            Toast.makeText(
-                this,
-                "No se encontró sesión. Inicia sesión nuevamente.",
-                Toast.LENGTH_LONG
-            ).show()
-            return
-        }
+        Log.d("DEVICE_PAIR", "POST api/Dispositivos/sesion-emparejamiento")
+        Log.d("DEVICE_PAIR", "Request: $request")
 
-        if (idPaciente.isBlank()) {
-            Toast.makeText(
-                this,
-                "No se encontró información del paciente. Inicia sesión nuevamente.",
-                Toast.LENGTH_LONG
-            ).show()
-            return
-        }
-
-        val codigoDispositivo = device.address ?: ""
-        if (codigoDispositivo.isBlank()) {
-            Toast.makeText(this, "No se pudo obtener la dirección del dispositivo", Toast.LENGTH_LONG).show()
-            return
-        }
-
-        val alias = device.name ?: "Reloj inteligente"
-        val numeroSerie = codigoDispositivo.replace(":", "")
-        val codigoModelo = device.name ?: "Modelo desconocido"
-
-        val request = EmparejarDispositivoRequest(
-            numeroSerie = numeroSerie,
-            alias = alias,
-            tipoDispositivo = "Smartwatch",
-            codigoModelo = codigoModelo,
-            codigoDispositivo = codigoDispositivo,
-            sistemaOperativo = "Android",
-            idPaciente = idPaciente
-        )
-
-        emparejarDispositivo(jwt, request)
-    }
-
-    private fun emparejarDispositivo(jwt: String, request: EmparejarDispositivoRequest) {
         lifecycleScope.launch {
             try {
-                Log.d("DISPOSITIVO_API", "Endpoint: api/Dispositivos/emparejar")
-                Log.d("DISPOSITIVO_API", "JWT existe: ${jwt.isNotBlank()}")
-                Log.d("DISPOSITIVO_API", "idPaciente: ${request.idPaciente}")
-                Log.d("DISPOSITIVO_API", "numeroSerie: ${request.numeroSerie}")
-                Log.d("DISPOSITIVO_API", "alias: ${request.alias}")
-                Log.d("DISPOSITIVO_API", "tipoDispositivo: ${request.tipoDispositivo}")
-                Log.d("DISPOSITIVO_API", "codigoModelo: ${request.codigoModelo}")
-                Log.d("DISPOSITIVO_API", "codigoDispositivo: ${request.codigoDispositivo}")
-                Log.d("DISPOSITIVO_API", "sistemaOperativo: ${request.sistemaOperativo}")
-                Log.d("DISPOSITIVO_API", "Request enviado: $request")
+                val response = dispositivoRepository.iniciarSesionEmparejamiento(jwt, request)
 
-                val response = dispositivoRepository.emparejarDispositivo(jwt, request)
-
-                Log.d("DISPOSITIVO_API", "HTTP code: ${response.code()}")
-                Log.d("DISPOSITIVO_API", "isSuccessful: ${response.isSuccessful}")
+                Log.d("DEVICE_PAIR_RESPONSE", "HTTP code: ${response.code()}")
+                Log.d("DEVICE_PAIR_RESPONSE", "isSuccessful: ${response.isSuccessful}")
 
                 if (response.isSuccessful) {
-                    Log.d("DISPOSITIVO_API", "Body: ${response.body()}")
-
                     sessionManager.guardarDispositivoVinculado(true)
                     Log.d("DISPOSITIVO_FLOW", "Dispositivo vinculado guardado: ${sessionManager.isDispositivoVinculado()}")
 
-                    Toast.makeText(
-                        this@ConectarDispositivoActivity,
-                        "Dispositivo emparejado correctamente",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    Toast.makeText(this@ConectarDispositivoActivity, "Dispositivo vinculado correctamente", Toast.LENGTH_LONG).show()
 
-                    startActivity(Intent(this@ConectarDispositivoActivity, MainActivity::class.java))
-                    finish()
+                    cargarDispositivos()
                 } else {
                     val errorBody = response.errorBody()?.string()
-                    Log.e("DISPOSITIVO_API", "ErrorBody: $errorBody")
+                    Log.e("DEVICE_PAIR_ERROR", "ErrorBody: $errorBody")
 
-                    val mensaje = when (response.code()) {
-                        400 -> "Datos inválidos. Verifica el dispositivo."
-                        401 -> "Sesión expirada. Inicia sesión nuevamente."
-                        404 -> "Endpoint no encontrado."
-                        in 500..599 -> "Error del servidor. Intenta más tarde."
-                        else -> "Error inesperado: ${response.code()}"
+                    val mensajeBackend = try {
+                        val errorJson = gson.fromJson(errorBody, Map::class.java)
+                        errorJson["message"] as? String ?: errorJson["mensaje"] as? String
+                    } catch (e: Exception) {
+                        null
                     }
+
+                    val mensaje = mensajeBackend
+                        ?: "No fue posible vincular el dispositivo"
                     Toast.makeText(this@ConectarDispositivoActivity, mensaje, Toast.LENGTH_LONG).show()
                 }
             } catch (e: IOException) {
-                Log.e("DISPOSITIVO_API", "Error de conexión", e)
-                Toast.makeText(
-                    this@ConectarDispositivoActivity,
-                    "No se pudo conectar con el servidor",
-                    Toast.LENGTH_LONG
-                ).show()
+                Log.e("DEVICE_PAIR_ERROR", "Error de conexión", e)
+                Toast.makeText(this@ConectarDispositivoActivity, "No se pudo conectar con el servidor", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
-                Log.e("DISPOSITIVO_API", "Error inesperado", e)
-                Toast.makeText(
-                    this@ConectarDispositivoActivity,
-                    "Error inesperado: ${e.message}",
-                    Toast.LENGTH_LONG
-                ).show()
+                Log.e("DEVICE_PAIR_ERROR", "Error inesperado", e)
+                Toast.makeText(this@ConectarDispositivoActivity, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun cargarDispositivos() {
+        val jwt = sessionManager.getToken()
+        val pacienteId = sessionManager.getPacienteId()
+
+        if (jwt.isBlank() || pacienteId.isBlank()) {
+            tvCargandoDispositivos.text = "Sesión inválida."
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                Log.d("DISPOSITIVOS_GET", "GET api/Dispositivos iniciado")
+
+                val response = dispositivoRepository.obtenerDispositivos(jwt)
+
+                Log.d("DISPOSITIVOS_GET", "HTTP code: ${response.code()}")
+                Log.d("DISPOSITIVOS_GET", "cantidad recibida: ${response.body()?.size ?: 0}")
+
+                if (response.isSuccessful) {
+                    val body = response.body().orEmpty()
+                    val propios = body.filter { it.idPaciente == pacienteId }
+
+                    Log.d("DISPOSITIVOS_GET", "cantidad filtrada por paciente: ${propios.size}")
+
+                    adapter.actualizarLista(propios)
+
+                    if (propios.isEmpty()) {
+                        rvDispositivos.visibility = View.GONE
+                        emptyDispositivos.visibility = View.VISIBLE
+                    } else {
+                        rvDispositivos.visibility = View.VISIBLE
+                        emptyDispositivos.visibility = View.GONE
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("DISPOSITIVOS_GET", "ErrorBody: $errorBody")
+
+                    tvCargandoDispositivos.text = "No se pudieron cargar los dispositivos."
+                }
+            } catch (e: IOException) {
+                Log.e("DISPOSITIVOS_GET", "Error de conexión", e)
+                tvCargandoDispositivos.text = "No se pudieron cargar los dispositivos."
+            } catch (e: Exception) {
+                Log.e("DISPOSITIVOS_GET", "Error inesperado", e)
+                tvCargandoDispositivos.text = "Error al cargar dispositivos."
+            } finally {
+                tvCargandoDispositivos.visibility = View.GONE
+            }
+        }
+    }
+
+    private fun mostrarDialogoEditarAlias(dispositivo: DispositivoResponse) {
+        val id = dispositivo.id ?: dispositivo.dispositivoId
+
+        if (id.isNullOrBlank()) {
+            Toast.makeText(this, "No se encontró el id del dispositivo.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 24)
+        }
+
+        val etAlias = EditText(this).apply {
+            setBackgroundResource(R.drawable.bg_edit_text)
+            inputType = InputType.TYPE_CLASS_TEXT
+            setText(dispositivo.alias ?: "")
+            hint = "Nuevo alias"
+            setPadding(24, 16, 24, 16)
+            textSize = 14f
+        }
+
+        layout.addView(etAlias)
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Editar alias")
+            .setView(layout)
+            .setPositiveButton("Guardar", null)
+            .setNegativeButton("Cancelar") { d, _ -> d.dismiss() }
+            .create()
+
+        dialog.show()
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val nuevoAlias = etAlias.text.toString().trim()
+
+            if (nuevoAlias.isEmpty()) {
+                etAlias.error = "Alias requerido"
+                return@setOnClickListener
+            }
+
+            if (nuevoAlias == dispositivo.alias) {
+                Toast.makeText(this, "El alias es el mismo.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val jwt = sessionManager.getToken()
+            if (jwt.isBlank()) {
+                Toast.makeText(this, "Sesión inválida.", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+
+            val request = ActualizarDispositivoRequest(
+                numeroSerie = dispositivo.numeroSerie,
+                alias = nuevoAlias,
+                tipoDispositivo = dispositivo.tipoDispositivo,
+                codigoModelo = dispositivo.codigoModelo,
+                codigoDispositivo = dispositivo.codigoDispositivo,
+                sistemaOperativo = dispositivo.sistemaOperativo,
+                idPaciente = dispositivo.idPaciente ?: sessionManager.getPacienteId()
+            )
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardando..."
+
+            lifecycleScope.launch {
+                try {
+                    Log.d("DISPOSITIVOS_PUT", "PUT api/Dispositivos/$id")
+                    Log.d("DISPOSITIVOS_PUT", "alias anterior: ${dispositivo.alias}")
+                    Log.d("DISPOSITIVOS_PUT", "alias nuevo: $nuevoAlias")
+
+                    val response = dispositivoRepository.actualizarDispositivo(jwt, id, request)
+
+                    Log.d("DISPOSITIVOS_PUT", "HTTP code: ${response.code()}")
+
+                    if (response.isSuccessful) {
+                        Toast.makeText(this@ConectarDispositivoActivity, "Alias actualizado correctamente.", Toast.LENGTH_SHORT).show()
+                        dialog.dismiss()
+                        cargarDispositivos()
+                    } else {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("DISPOSITIVOS_PUT", "ErrorBody: $errorBody")
+                        Toast.makeText(this@ConectarDispositivoActivity, "No se pudo actualizar el alias.", Toast.LENGTH_LONG).show()
+                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardar"
+                    }
+                } catch (e: IOException) {
+                    Log.e("DISPOSITIVOS_PUT", "Error de conexión", e)
+                    Toast.makeText(this@ConectarDispositivoActivity, "No se pudo conectar con el servidor", Toast.LENGTH_LONG).show()
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardar"
+                } catch (e: Exception) {
+                    Log.e("DISPOSITIVOS_PUT", "Error inesperado", e)
+                    Toast.makeText(this@ConectarDispositivoActivity, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardar"
+                }
+            }
+        }
+    }
+
+    private fun mostrarDialogoEliminarDispositivo(dispositivo: DispositivoResponse) {
+        val id = dispositivo.id ?: dispositivo.dispositivoId
+
+        if (id.isNullOrBlank()) {
+            Toast.makeText(this, "No se encontró el id del dispositivo.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val jwt = sessionManager.getToken()
+        if (jwt.isBlank()) {
+            Toast.makeText(this, "Sesión inválida.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Eliminar dispositivo")
+            .setMessage("¿Deseas eliminar este dispositivo?")
+            .setPositiveButton("Eliminar") { _, _ ->
+                eliminarDispositivo(jwt, id, dispositivo)
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun eliminarDispositivo(jwt: String, id: String, dispositivo: DispositivoResponse) {
+        lifecycleScope.launch {
+            try {
+                Log.d("DISPOSITIVOS_DELETE", "DELETE api/Dispositivos/$id")
+                Log.d("DISPOSITIVOS_DELETE", "alias: ${dispositivo.alias}")
+
+                val response = dispositivoRepository.eliminarDispositivo(jwt, id)
+
+                Log.d("DISPOSITIVOS_DELETE", "HTTP code: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    Toast.makeText(this@ConectarDispositivoActivity, "Dispositivo eliminado correctamente", Toast.LENGTH_SHORT).show()
+                    cargarDispositivos()
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("DISPOSITIVOS_DELETE", "ErrorBody: $errorBody")
+                    Toast.makeText(this@ConectarDispositivoActivity, "No se pudo eliminar el dispositivo.", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: IOException) {
+                Log.e("DISPOSITIVOS_DELETE", "Error de conexión", e)
+                Toast.makeText(this@ConectarDispositivoActivity, "No se pudo conectar con el servidor", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Log.e("DISPOSITIVOS_DELETE", "Error inesperado", e)
+                Toast.makeText(this@ConectarDispositivoActivity, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }

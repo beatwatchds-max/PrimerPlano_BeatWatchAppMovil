@@ -4,6 +4,7 @@ import com.beatwatch.app.data.api.RetrofitClient
 import com.beatwatch.app.data.model.ActualizarDispositivoRequest
 import com.beatwatch.app.data.model.DispositivoResponse
 import com.beatwatch.app.data.model.EmparejarDispositivoRequest
+import com.beatwatch.app.data.model.SesionEmparejamientoRequest
 import retrofit2.Response
 
 class DispositivoRepository {
@@ -41,6 +42,16 @@ class DispositivoRepository {
         return RetrofitClient.dispositivoApiService.eliminarDispositivo(
             authorization = "Bearer $jwt",
             id = id
+        )
+    }
+
+    suspend fun iniciarSesionEmparejamiento(
+        jwt: String,
+        request: SesionEmparejamientoRequest
+    ): Response<Unit> {
+        return RetrofitClient.dispositivoApiService.iniciarSesionEmparejamiento(
+            authorization = "Bearer $jwt",
+            request = request
         )
     }
 }

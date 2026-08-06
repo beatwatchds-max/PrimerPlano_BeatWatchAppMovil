@@ -6,21 +6,17 @@
     android:background="@color/beatwatch_background"
     android:fillViewport="true">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="vertical"
         android:padding="24dp">
 
-        <!-- Logo BEATWATCH -->
         <LinearLayout
-            android:id="@+id/logoContainer"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
-            android:orientation="horizontal"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+            android:orientation="horizontal">
 
             <ImageView
                 android:layout_width="32dp"
@@ -39,201 +35,119 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Título -->
         <TextView
-            android:id="@+id/tvTitulo"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:gravity="center"
-            android:text="Conectar Dispositivo"
+            android:text="Mis dispositivos"
             android:textColor="@color/beatwatch_dark_blue"
             android:textSize="20sp"
-            android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/logoContainer" />
+            android:textStyle="bold" />
 
-        <!-- Subtítulo -->
         <TextView
-            android:id="@+id/tvSubtitulo"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:gravity="center"
-            android:text="Conecta tu reloj inteligente para monitoreo en tiempo real"
+            android:layout_marginTop="4dp"
+            android:text="Administra los relojes vinculados a tu cuenta"
             android:textColor="#6B7A90"
-            android:textSize="13sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvTitulo" />
+            android:textSize="13sp" />
 
-        <!-- Card blanca -->
         <LinearLayout
-            android:id="@+id/formCard"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="20dp"
             android:background="@drawable/bg_login_card"
-            android:elevation="6dp"
+            android:elevation="4dp"
             android:gravity="center_horizontal"
             android:orientation="vertical"
-            android:padding="22dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvSubtitulo"
-            app:layout_constraintWidth_percent="0.88">
+            android:padding="22dp">
 
-            <!-- Ícono Bluetooth -->
-            <ImageView
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:contentDescription="Bluetooth"
-                android:src="@drawable/ic_heart_outline" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="▣"
+                android:textColor="@color/beatwatch_blue"
+                android:textSize="48sp" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:gravity="center"
-                android:text="Sincronización Bluetooth"
+                android:text="Escanea el código QR generado por tu reloj para vincularlo"
                 android:textColor="@color/beatwatch_dark_blue"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:gravity="center"
-                android:text="Busca dispositivos cercanos"
-                android:textColor="#6B7A90"
                 android:textSize="14sp" />
 
-            <!-- Caja informativa -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="#E8F0FE"
-                android:orientation="vertical"
-                android:padding="14dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <View
-                        android:layout_width="6dp"
-                        android:layout_height="6dp"
-                        android:background="@color/beatwatch_blue" />
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_weight="1"
-                        android:text="Asegúrate de que el Bluetooth esté activado"
-                        android:textColor="@color/beatwatch_dark_blue"
-                        android:textSize="13sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <View
-                        android:layout_width="6dp"
-                        android:layout_height="6dp"
-                        android:background="@color/beatwatch_blue" />
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_weight="1"
-                        android:text="Mantén tu reloj cerca del teléfono (menos de 1 metro)"
-                        android:textColor="@color/beatwatch_dark_blue"
-                        android:textSize="13sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <View
-                        android:layout_width="6dp"
-                        android:layout_height="6dp"
-                        android:background="@color/beatwatch_blue" />
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_weight="1"
-                        android:text="Verifica que el reloj esté encendido y cargado"
-                        android:textColor="@color/beatwatch_dark_blue"
-                        android:textSize="13sp" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- Lista de dispositivos -->
-            <LinearLayout
-                android:id="@+id/dispositivosContainer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:orientation="vertical"
-                android:visibility="gone" />
-
-            <!-- Mensaje sin dispositivos -->
-            <TextView
-                android:id="@+id/tvSinDispositivos"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:gravity="center"
-                android:text="No se encontraron dispositivos.\nAsegúrate de que tu reloj esté encendido y cerca."
-                android:textColor="#6B7A90"
-                android:textSize="13sp"
-                android:visibility="gone" />
-
-            <!-- Botón Buscar -->
             <androidx.appcompat.widget.AppCompatButton
-                android:id="@+id/btnBuscar"
+                android:id="@+id/btnEscanearQR"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="16dp"
                 android:background="@drawable/bg_primary_button"
-                android:text="Buscar dispositivos"
+                android:text="Escanear QR"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
                 android:textSize="15sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Botón Omitir -->
+        <TextView
+            android:id="@+id/tvCargandoDispositivos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:text="Cargando dispositivos..."
+            android:textColor="#6B7A90"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:id="@+id/emptyDispositivos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@color/white"
+            android:elevation="2dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="No tienes dispositivos vinculados"
+                android:textColor="#6B7A90"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Escanea un QR para agregar tu primer dispositivo"
+                android:textColor="#6B7A90"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvDispositivos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:nestedScrollingEnabled="false"
+            android:visibility="gone" />
+
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btnOmitir"
             style="@style/Widget.AppCompat.Button.Borderless"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginTop="16dp"
             android:text="Omitir por ahora"
             android:textAllCaps="false"
             android:textColor="#6B7A90"
-            android:textSize="14sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/formCard" />
+            android:textSize="14sp" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
 </ScrollView>
