@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema principal de la app: claro, sin ActionBar (el login no lleva toolbar) -->
+    <style name="Theme.BEATWATCH" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/beatwatch_blue</item>
+        <item name="colorOnPrimary">@color/white</item>
+
+        <!-- Barra de estado y navegación integradas con el fondo claro -->
+        <item name="android:statusBarColor">@color/beatwatch_background</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/beatwatch_background</item>
+
+        <!-- Fondo por defecto de las ventanas -->
+        <item name="android:windowBackground">@color/beatwatch_background</item>
+    </style>
+</resources>

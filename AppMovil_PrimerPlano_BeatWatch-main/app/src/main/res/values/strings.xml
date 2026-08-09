@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BEATWATCH</string>
+
+    <!-- Login -->
+    <string name="login_title">Iniciar Sesión</string>
+    <string name="login_token_label">Token</string>
+    <string name="login_token_hint">Ingresa tu token</string>
+    <string name="login_button">Iniciar sesión</string>
+
+    <!-- Mensajes de validación -->
+    <string name="error_token_empty">Ingresa tu token</string>
+
+    <!-- Login - Estados del botón -->
+    <string name="login_button_loading">Iniciando…</string>
+
+    <!-- Login - Respuestas de la API -->
+    <string name="msg_login_success">Inicio de sesión exitoso</string>
+    <string name="error_invalid_token">Token inválido o expirado</string>
+    <string name="error_too_many_attempts">Demasiados intentos. Intenta más tarde</string>
+    <string name="error_server">Error del servidor. Intenta más tarde</string>
+    <string name="error_connection">No se pudo conectar con el servidor</string>
+
+    <!-- Registro del Paciente -->
+    <string name="registro_title">Registro del Paciente</string>
+    <string name="registro_section_info">Información Básica</string>
+    <string name="registro_continuar">Continuar</string>
+
+    <!-- Labels de campos -->
+    <string name="label_nombre">Nombre Completo</string>
+    <string name="label_edad">Edad</string>
+    <string name="label_sexo">Sexo</string>
+    <string name="label_fecha_nacimiento">Fecha de Nacimiento</string>
+    <string name="label_peso">Peso (kg)</string>
+    <string name="label_estatura">Estatura (cm)</string>
+    <string name="label_tipo_sangre">Tipo de Sangre</string>
+    <string name="label_fotografia">Fotografía</string>
+    <string name="label_curp">CURP</string>
+    <string name="label_direccion">Dirección</string>
+    <string name="label_telefono">Teléfono</string>
+
+    <!-- Hints / placeholders -->
+    <string name="hint_nombre">Nombre completo del paciente</string>
+    <string name="hint_edad">Edad</string>
+    <string name="hint_sexo">Seleccionar…</string>
+    <string name="hint_fecha_nacimiento">dd/mm/aaaa</string>
+    <string name="hint_peso">Peso en kilogramos</string>
+    <string name="hint_estatura">Estatura en centímetros</string>
+    <string name="hint_tipo_sangre">Seleccionar…</string>
+    <string name="hint_fotografia">Seleccionar fotografía</string>
+    <string name="hint_curp">Clave Única de Registro de Población</string>
+    <string name="hint_direccion">Dirección completa</string>
+    <string name="hint_telefono">Número de teléfono</string>
+
+    <!-- Sexo opciones -->
+    <string-array name="sexo_opciones">
+        <item>Masculino</item>
+        <item>Femenino</item>
+        <item>Otro</item>
+    </string-array>
+
+    <!-- Tipo de sangre opciones -->
+    <string-array name="tipo_sangre_opciones">
+        <item>A+</item>
+        <item>A-</item>
+        <item>B+</item>
+        <item>B-</item>
+        <item>AB+</item>
+        <item>AB-</item>
+        <item>O+</item>
+        <item>O-</item>
+    </string-array>
+
+    <!-- Mensajes del formulario -->
+    <string name="msg_campos_obligatorios">Completa los campos obligatorios</string>
+    <string name="msg_info_capturada">Información capturada correctamente</string>
+    <string name="msg_foto_pendiente">Selección de fotografía pendiente</string>
+
+    <!-- Registro de la Arritmia -->
+    <string name="arritmia_title">Registro de la Arritmia</string>
+    <string name="label_tipo_arritmia">Tipo de Arritmia</string>
+    <string name="label_frecuencia_cardiaca">Frecuencia Cardíaca (bpm)</string>
+    <string name="label_duracion_episodio">Duración de Episodio</string>
+    <string name="label_sintomas">Síntomas Presentados</string>
+    <string name="hint_arritmia">Seleccionar…</string>
+    <string name="hint_frecuencia_cardiaca">Latidos por minuto</string>
+    <string name="hint_duracion_episodio">Ej: 30 minutos, 2 horas</string>
+    <string name="msg_arritmia_capturada">Información de arritmia capturada correctamente</string>
+
+    <!-- Tipo de arritmia opciones -->
+    <string-array name="tipo_arritmia_opciones">
+        <item>Taquicardia</item>
+        <item>Bradicardia</item>
+        <item>Fibrilación auricular</item>
+        <item>Arritmia supraventricular</item>
+        <item>Arritmia ventricular</item>
+        <item>Otro</item>
+    </string-array>
+
+    <!-- Factores de Riesgo -->
+    <string name="factores_title">Factores de Riesgo</string>
+    <string name="factores_descripcion">Selecciona los factores que aplican al paciente.\nEsta información ayuda a personalizar el monitoreo.</string>
+    <string name="msg_factores_capturados">Factores de riesgo capturados correctamente</string>
+    <string name="error_selecciona_factor">Selecciona al menos un factor de riesgo</string>
+</resources>

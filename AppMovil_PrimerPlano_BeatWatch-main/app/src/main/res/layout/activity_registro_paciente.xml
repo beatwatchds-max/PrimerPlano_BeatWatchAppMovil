@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/beatwatch_background"
+    android:fillViewport="true">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp">
+
+        <!-- Logo: corazón + texto BEATWATCH -->
+        <LinearLayout
+            android:id="@+id/logoContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            app:layout_constraintBottom_toTopOf="@id/formCard"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_chainStyle="packed">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_heart_outline" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:letterSpacing="0.05"
+                android:text="@string/app_name"
+                android:textColor="@color/beatwatch_blue"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Card blanca del formulario -->
+        <LinearLayout
+            android:id="@+id/formCard"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:background="@drawable/bg_login_card"
+            android:elevation="6dp"
+            android:orientation="vertical"
+            android:padding="22dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/logoContainer"
+            app:layout_constraintWidth_percent="0.88">
+
+            <!-- Título: Registro del Paciente -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="@string/registro_title"
+                android:textColor="@color/beatwatch_dark_blue"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <!-- Sección: Información Básica -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/registro_section_info"
+                android:textColor="@color/beatwatch_blue"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <!-- ==================== CURP ==================== -->
+            <TextView
+                style="@style/LabelForm"
+                android:layout_marginTop="16dp"
+                android:text="@string/label_curp" />
+
+            <EditText
+                android:id="@+id/etCurp"
+                style="@style/InputForm"
+                android:hint="@string/hint_curp"
+                android:inputType="textCapCharacters"
+                android:maxLength="18" />
+
+            <!-- ==================== EDAD ==================== -->
+            <TextView
+                style="@style/LabelForm"
+                android:text="@string/label_edad" />
+
+            <EditText
+                android:id="@+id/etEdad"
+                style="@style/InputForm"
+                android:hint="@string/hint_edad"
+                android:inputType="number" />
+
+            <!-- ==================== SEXO ==================== -->
+            <TextView
+                style="@style/LabelForm"
+                android:text="@string/label_sexo" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="8dp">
+
+                <Spinner
+                    android:id="@+id/spSexo"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_token_input"
+                    android:paddingHorizontal="16dp" />
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center_vertical|end"
+                    android:layout_marginEnd="12dp"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:src="@drawable/ic_arrow_down"
+                    android:importantForAccessibility="no" />
+            </FrameLayout>
+
+            <!-- ==================== PESO ==================== -->
+            <TextView
+                style="@style/LabelForm"
+                android:text="@string/label_peso" />
+
+            <EditText
+                android:id="@+id/etPeso"
+                style="@style/InputForm"
+                android:hint="@string/hint_peso"
+                android:inputType="numberDecimal" />
+
+            <!-- ==================== ESTATURA ==================== -->
+            <TextView
+                style="@style/LabelForm"
+                android:text="@string/label_estatura" />
+
+            <EditText
+                android:id="@+id/etEstatura"
+                style="@style/InputForm"
+                android:hint="@string/hint_estatura"
+                android:inputType="numberDecimal" />
+
+            <!-- ==================== FECHA DE NACIMIENTO ==================== -->
+            <TextView
+                style="@style/LabelForm"
+                android:text="@string/label_fecha_nacimiento" />
+
+            <EditText
+                android:id="@+id/etFechaNacimiento"
+                style="@style/InputForm"
+                android:hint="@string/hint_fecha_nacimiento"
+                android:focusable="false"
+                android:clickable="true"
+                android:inputType="none" />
+
+            <!-- ==================== DIRECCIÓN ==================== -->
+            <TextView
+                style="@style/LabelForm"
+                android:text="@string/label_direccion" />
+
+            <EditText
+                android:id="@+id/etDireccion"
+                style="@style/InputForm"
+                android:hint="@string/hint_direccion"
+                android:inputType="textPostalAddress" />
+
+            <!-- ==================== TIPO DE SANGRE ==================== -->
+            <TextView
+                style="@style/LabelForm"
+                android:text="@string/label_tipo_sangre" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="8dp">
+
+                <Spinner
+                    android:id="@+id/spTipoSangre"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_token_input"
+                    android:paddingHorizontal="16dp" />
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center_vertical|end"
+                    android:layout_marginEnd="12dp"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:src="@drawable/ic_arrow_down"
+                    android:importantForAccessibility="no" />
+            </FrameLayout>
+
+            <!-- ==================== FOTOGRAFÍA ==================== -->
+            <TextView
+                style="@style/LabelForm"
+                android:text="@string/label_fotografia" />
+
+            <LinearLayout
+                android:id="@+id/btnFoto"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/bg_upload_button"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_marginEnd="8dp"
+                    android:src="@drawable/ic_upload"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/hint_fotografia"
+                    android:textColor="@color/placeholder_gray"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <!-- ==================== BOTÓN CONTINUAR ==================== -->
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnContinuar"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="28dp"
+                android:background="@drawable/bg_primary_button"
+                android:text="@string/registro_continuar"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

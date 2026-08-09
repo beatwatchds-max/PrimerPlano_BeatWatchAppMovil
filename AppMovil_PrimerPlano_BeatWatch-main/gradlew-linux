@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# The shared Gradle settings contain the Windows JDK path. Override it only for Linux builds.
+if [[ -z "${JAVA_HOME:-}" ]]; then
+    printf '%s\n' "Define JAVA_HOME con la ruta de un JDK 17 antes de compilar." >&2
+    exit 1
+fi
+
+ANDROID_SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+if [[ -z "$ANDROID_SDK_DIR" || ! -d "$ANDROID_SDK_DIR" ]]; then
+    printf '%s\n' "Define ANDROID_HOME o ANDROID_SDK_ROOT con la ruta del Android SDK." >&2
+    exit 1
+fi
+
+export ANDROID_HOME="$ANDROID_SDK_DIR"
+# Avoid the Windows-only LOCALAPPDATA assumption in the root Gradle build script.
+export LOCALAPPDATA="${LOCALAPPDATA:-$HOME/.cache/beatwatch}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec bash "$SCRIPT_DIR/gradlew" -Dorg.gradle.java.home="$JAVA_HOME" "$@"
