@@ -102,4 +102,11 @@
     <string name="factores_descripcion">Selecciona los factores que aplican al paciente.\nEsta información ayuda a personalizar el monitoreo.</string>
     <string name="msg_factores_capturados">Factores de riesgo capturados correctamente</string>
     <string name="error_selecciona_factor">Selecciona al menos un factor de riesgo</string>
+
+    <!-- Panel principal -->
+    <string name="dashboard_first_pulse_label">Primer pulso registrado</string>
+    <string name="dashboard_no_pulse">Sin registros de pulso</string>
+    <string name="dashboard_first_pulse">Primer pulso registrado: %1$d bpm</string>
+    <string name="dashboard_pulse_registered">Registro disponible</string>
+    <string name="dashboard_no_wearable_connection">Sin conexión al wearable</string>
 </resources>

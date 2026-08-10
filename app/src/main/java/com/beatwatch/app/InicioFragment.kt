@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.beatwatch.app.data.model.ActualizarDispositivoRequest
 import com.beatwatch.app.data.model.DispositivoResponse
 import com.beatwatch.app.data.repository.DispositivoRepository
+import com.beatwatch.app.data.repository.HistorialRepository
 import com.beatwatch.app.data.repository.PacienteRepository
 import com.beatwatch.app.ui.adapters.DispositivoAdapter
 import com.beatwatch.app.utils.SessionManager
@@ -40,6 +41,7 @@ class InicioFragment : Fragment() {
     private lateinit var sessionManager: SessionManager
     private lateinit var pacienteRepository: PacienteRepository
     private lateinit var dispositivoRepository: DispositivoRepository
+    private lateinit var historialRepository: HistorialRepository
 
     private lateinit var rvDispositivos: RecyclerView
     private lateinit var tvCargandoDispositivos: TextView
@@ -62,6 +64,7 @@ class InicioFragment : Fragment() {
         sessionManager = SessionManager.getInstance(requireContext())
         pacienteRepository = PacienteRepository()
         dispositivoRepository = DispositivoRepository()
+        historialRepository = HistorialRepository()
 
         tvFrecuenciaCardiaca = view.findViewById(R.id.tvFrecuenciaCardiaca)
         tvEstadoFrecuencia = view.findViewById(R.id.tvEstadoFrecuencia)
@@ -91,6 +94,7 @@ class InicioFragment : Fragment() {
         cargarDatosPaciente()
         if (sessionManager.getPacienteId().isNotBlank()) {
             cargarDispositivos()
+            cargarPrimerPulso()
         }
         configurarSwitchReloj()
         configurarBotonPulso()
@@ -141,6 +145,7 @@ class InicioFragment : Fragment() {
                     if (pacienteId.isNotBlank()) {
                         sessionManager.guardarPacienteId(pacienteId)
                         cargarDispositivos()
+                        cargarPrimerPulso()
                     }
 
                     val nombreMostrar = nombre.ifBlank { "Paciente" }
@@ -153,7 +158,7 @@ class InicioFragment : Fragment() {
                     val sangreTexto = if (tipoSangre.isNotBlank()) "Tipo $tipoSangre" else "Tipo --"
 
                     tvDetallesPaciente.text = "$edadTexto · $sangreTexto"
-                    tvDiagnosticoPaciente.text = "Fibrilación auricular"
+                    tvDiagnosticoPaciente.text = "Diagnóstico no disponible"
                 } else {
                     val errorBody = response.errorBody()?.string()
                     Log.e("PACIENTE_INFO", "ErrorBody: $errorBody")
@@ -180,6 +185,34 @@ class InicioFragment : Fragment() {
         }
     }
 
+    private fun cargarPrimerPulso() {
+        val jwt = sessionManager.getToken()
+        val pacienteId = sessionManager.getPacienteId()
+        if (jwt.isBlank() || pacienteId.isBlank()) return
+
+        lifecycleScope.launch {
+            try {
+                val response = historialRepository.obtenerHistorial(jwt, pacienteId)
+                if (!response.isSuccessful) return@launch
+
+                val primerRegistro = response.body()
+                    .orEmpty()
+                    .filter { it.frecuenciaCardiaca != null }
+                    .minWithOrNull(compareBy { it.fecha ?: "" })
+                    ?: return@launch
+
+                val frecuencia = primerRegistro.frecuenciaCardiaca ?: return@launch
+                tvFrecuenciaCardiaca.text = frecuencia.toString()
+                tvUltimoPulso.text = getString(R.string.dashboard_first_pulse, frecuencia)
+                tvEstadoFrecuencia.text = getString(R.string.dashboard_pulse_registered)
+            } catch (e: IOException) {
+                Log.e("PULSO_INFO", "Error de conexión", e)
+            } catch (e: Exception) {
+                Log.e("PULSO_INFO", "Error inesperado", e)
+            }
+        }
+    }
+
     private fun cargarDispositivos() {
         val jwt = sessionManager.getToken()
         val pacienteId = sessionManager.getPacienteId()
@@ -201,7 +234,7 @@ class InicioFragment : Fragment() {
             try {
                 Log.d("DISPOSITIVOS_GET", "GET api/Dispositivos iniciado")
 
-                val response = dispositivoRepository.obtenerDispositivos(jwt)
+                val response = dispositivoRepository.obtenerDispositivos(jwt, pacienteId)
 
                 Log.d("DISPOSITIVOS_GET", "HTTP code: ${response.code()}")
                 Log.d("DISPOSITIVOS_GET", "cantidad recibida: ${response.body()?.size ?: 0}")
@@ -440,7 +473,7 @@ class InicioFragment : Fragment() {
     private fun configurarSwitchReloj() {
         switchReloj.isChecked = false
         switchReloj.isEnabled = false
-        tvEstadoReloj.text = "Sin conexión al wearable"
+        tvEstadoReloj.text = getString(R.string.dashboard_no_wearable_connection)
         btnTomarPulso.isEnabled = false
         btnTomarPulso.alpha = 0.5f
 

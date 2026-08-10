@@ -46,15 +46,18 @@ class DispositivoAdapter(
 
         holder.tvSerie.text = "Serie: ${dispositivo.numeroSerie ?: "--"}"
 
-        val activo = dispositivo.activo ?: true
-        if (activo) {
+        if (dispositivo.activo == true) {
             holder.tvEstado.text = "Activo"
             holder.tvEstado.setBackgroundColor(0xFFE8F5E9.toInt())
             holder.tvEstado.setTextColor(0xFF2E7D32.toInt())
-        } else {
+        } else if (dispositivo.activo == false) {
             holder.tvEstado.text = "Inactivo"
             holder.tvEstado.setBackgroundColor(0xFFFFF3E0.toInt())
             holder.tvEstado.setTextColor(0xFFE65100.toInt())
+        } else {
+            holder.tvEstado.text = "Estado no disponible"
+            holder.tvEstado.setBackgroundColor(0x00000000)
+            holder.tvEstado.setTextColor(0xFF6B7A90.toInt())
         }
 
         holder.btnEditar.setOnClickListener {

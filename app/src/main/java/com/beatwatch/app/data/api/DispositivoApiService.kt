@@ -3,7 +3,6 @@ package com.beatwatch.app.data.api
 import com.beatwatch.app.data.model.ActualizarDispositivoRequest
 import com.beatwatch.app.data.model.DispositivoResponse
 import com.beatwatch.app.data.model.EmparejarDispositivoRequest
-import com.beatwatch.app.data.model.SesionEmparejamientoRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -13,6 +12,7 @@ import retrofit2.http.Headers
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface DispositivoApiService {
 
@@ -22,7 +22,8 @@ interface DispositivoApiService {
     )
     @GET("api/Dispositivos")
     suspend fun obtenerDispositivos(
-        @Header("Authorization") authorization: String
+        @Header("Authorization") authorization: String,
+        @Query("idPaciente") idPaciente: String
     ): Response<List<DispositivoResponse>>
 
     @Headers(
@@ -52,13 +53,4 @@ interface DispositivoApiService {
         @Path("id") id: String
     ): Response<Unit>
 
-    @Headers(
-        "Content-Type: application/json",
-        "Accept: application/json"
-    )
-    @POST("api/Dispositivos/sesion-emparejamiento")
-    suspend fun iniciarSesionEmparejamiento(
-        @Header("Authorization") authorization: String,
-        @Body request: SesionEmparejamientoRequest
-    ): Response<Unit>
 }

@@ -17,8 +17,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.beatwatch.app.data.model.ActualizarDispositivoRequest
 import com.beatwatch.app.data.model.DispositivoResponse
+import com.beatwatch.app.data.model.EmparejarDispositivoRequest
 import com.beatwatch.app.data.model.QrDevicePayload
-import com.beatwatch.app.data.model.SesionEmparejamientoRequest
 import com.beatwatch.app.data.repository.DispositivoRepository
 import com.beatwatch.app.ui.adapters.DispositivoAdapter
 import com.beatwatch.app.utils.SessionManager
@@ -102,8 +102,8 @@ class ConectarDispositivoActivity : AppCompatActivity() {
         try {
             val payload = gson.fromJson(contenido, QrDevicePayload::class.java)
 
-            if (payload.numeroSerie.isNullOrBlank()) {
-                Toast.makeText(this, "QR inválido: falta número de serie", Toast.LENGTH_LONG).show()
+            if (payload.idSesion.isBlank() || payload.tokenEmparejamiento.isBlank()) {
+                Toast.makeText(this, "QR inválido: faltan datos de emparejamiento", Toast.LENGTH_LONG).show()
                 return
             }
 
@@ -116,14 +116,17 @@ class ConectarDispositivoActivity : AppCompatActivity() {
                 return
             }
 
-            val request = SesionEmparejamientoRequest(
-                numeroSerie = payload.numeroSerie,
+            val pacienteId = sessionManager.getPacienteId()
+            if (pacienteId.isBlank()) {
+                Toast.makeText(this, "No se encontró el paciente de la sesión", Toast.LENGTH_LONG).show()
+                return
+            }
+
+            val request = EmparejarDispositivoRequest(
+                idSesion = payload.idSesion,
+                tokenEmparejamiento = payload.tokenEmparejamiento,
+                idPaciente = pacienteId,
                 alias = payload.alias,
-                tipoDispositivo = payload.tipoDispositivo,
-                codigoModelo = payload.codigoModelo,
-                codigoDispositivo = payload.codigoDispositivo,
-                sistemaOperativo = payload.sistemaOperativo,
-                versionAplicacion = payload.versionAplicacion
             )
 
             emparejarPorQR(jwt, request)
@@ -134,15 +137,15 @@ class ConectarDispositivoActivity : AppCompatActivity() {
         }
     }
 
-    private fun emparejarPorQR(jwt: String, request: SesionEmparejamientoRequest) {
+    private fun emparejarPorQR(jwt: String, request: EmparejarDispositivoRequest) {
         Toast.makeText(this, "Emparejando dispositivo...", Toast.LENGTH_SHORT).show()
 
-        Log.d("DEVICE_PAIR", "POST api/Dispositivos/sesion-emparejamiento")
+        Log.d("DEVICE_PAIR", "POST api/Dispositivos/emparejar")
         Log.d("DEVICE_PAIR", "Request: $request")
 
         lifecycleScope.launch {
             try {
-                val response = dispositivoRepository.iniciarSesionEmparejamiento(jwt, request)
+                val response = dispositivoRepository.emparejarDispositivo(jwt, request)
 
                 Log.d("DEVICE_PAIR_RESPONSE", "HTTP code: ${response.code()}")
                 Log.d("DEVICE_PAIR_RESPONSE", "isSuccessful: ${response.isSuccessful}")
@@ -192,7 +195,7 @@ class ConectarDispositivoActivity : AppCompatActivity() {
             try {
                 Log.d("DISPOSITIVOS_GET", "GET api/Dispositivos iniciado")
 
-                val response = dispositivoRepository.obtenerDispositivos(jwt)
+                val response = dispositivoRepository.obtenerDispositivos(jwt, pacienteId)
 
                 Log.d("DISPOSITIVOS_GET", "HTTP code: ${response.code()}")
                 Log.d("DISPOSITIVOS_GET", "cantidad recibida: ${response.body()?.size ?: 0}")
