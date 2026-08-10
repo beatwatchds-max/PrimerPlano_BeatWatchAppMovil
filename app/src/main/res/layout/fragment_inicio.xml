@@ -192,7 +192,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Tomar pulso ahora"
+                        android:text="Tomar pulso (requiere wearable)"
                     android:textColor="@color/beatwatch_dark_blue"
                     android:textSize="14sp"
                     android:textStyle="bold" />

@@ -25,7 +25,6 @@ import com.beatwatch.app.ui.adapters.DispositivoAdapter
 import com.beatwatch.app.utils.SessionManager
 import kotlinx.coroutines.launch
 import java.io.IOException
-import java.util.Random
 
 class InicioFragment : Fragment() {
 
@@ -90,7 +89,9 @@ class InicioFragment : Fragment() {
         rvDispositivos.adapter = adapter
 
         cargarDatosPaciente()
-        cargarDispositivos()
+        if (sessionManager.getPacienteId().isNotBlank()) {
+            cargarDispositivos()
+        }
         configurarSwitchReloj()
         configurarBotonPulso()
         configurarCardsRapidas(view)
@@ -101,6 +102,13 @@ class InicioFragment : Fragment() {
         val nombre = sessionManager.getNombre()
         val jwt = sessionManager.getToken()
         val usuarioId = sessionManager.getUsuarioId()
+
+        if (!sessionManager.getRol().equals("Paciente", ignoreCase = true)) {
+            tvNombrePaciente.text = nombre.ifBlank { "Usuario" }
+            tvDetallesPaciente.text = "Perfil de paciente no disponible"
+            tvDiagnosticoPaciente.text = "Requiere soporte del servidor"
+            return
+        }
 
         if (jwt.isBlank()) {
             Toast.makeText(requireContext(), "Sesión inválida. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
@@ -132,6 +140,7 @@ class InicioFragment : Fragment() {
                     val pacienteId = paciente?.pacienteId.orEmpty()
                     if (pacienteId.isNotBlank()) {
                         sessionManager.guardarPacienteId(pacienteId)
+                        cargarDispositivos()
                     }
 
                     val nombreMostrar = nombre.ifBlank { "Paciente" }
@@ -429,6 +438,12 @@ class InicioFragment : Fragment() {
     }
 
     private fun configurarSwitchReloj() {
+        switchReloj.isChecked = false
+        switchReloj.isEnabled = false
+        tvEstadoReloj.text = "Sin conexión al wearable"
+        btnTomarPulso.isEnabled = false
+        btnTomarPulso.alpha = 0.5f
+
         switchReloj.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 tvEstadoReloj.text = "Encendido"
@@ -444,15 +459,11 @@ class InicioFragment : Fragment() {
 
     private fun configurarBotonPulso() {
         btnTomarPulso.setOnClickListener {
-            val pulsoSimulado = Random().nextInt(31) + 60
-            tvFrecuenciaCardiaca.text = pulsoSimulado.toString()
-            tvUltimoPulso.text = "Último pulso: $pulsoSimulado bpm"
-
-            tvEstadoFrecuencia.text = when {
-                pulsoSimulado < 60 -> "Bajo"
-                pulsoSimulado > 100 -> "Elevado"
-                else -> "Normal"
-            }
+            Toast.makeText(
+                requireContext(),
+                "La medición requiere conexión con el wearable.",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 

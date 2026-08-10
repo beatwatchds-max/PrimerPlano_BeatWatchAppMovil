@@ -144,6 +144,11 @@ class LoginActivity : AppCompatActivity() {
                     ).show()
 
                     when {
+                        !esPaciente(body?.rol) -> {
+                            startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                            finish()
+                        }
+
                         !perfilCompletado -> {
                             Log.d("LOGIN_FLOW", "Perfil no completado -> RegistroPacienteActivity")
                             startActivity(Intent(this@LoginActivity, RegistroPacienteActivity::class.java))
@@ -200,4 +205,7 @@ class LoginActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun esPaciente(rol: String?): Boolean =
+        rol.equals("Paciente", ignoreCase = true)
 }

@@ -43,6 +43,11 @@ class SessionManager private constructor(context: Context) {
         idLicencia: String
     ) {
         prefs.edit()
+            // Los datos clínicos pertenecen a la sesión anterior y no deben heredarse.
+            .remove(KEY_PACIENTE_ID)
+            .remove(KEY_PERFIL_COMPLETADO)
+            .remove(KEY_DIAGNOSTICO_COMPLETADO)
+            .remove(KEY_DISPOSITIVO_VINCULADO)
             .putString(KEY_TOKEN, token)
             .putString(KEY_USUARIO_ID, usuarioId)
             .putString(KEY_NOMBRE, nombre)
