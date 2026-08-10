@@ -123,7 +123,10 @@ class PerfilFragment : Fragment() {
                     val paciente = response.body()
                     pacientePerfilActual = paciente
 
-                    val pacienteId = paciente?.pacienteId.orEmpty()
+                    val pacienteId = paciente?.pacienteId
+                        ?: paciente?.id
+                        ?: paciente?._id
+                        ?: ""
                     if (pacienteId.isNotBlank()) {
                         sessionManager.guardarPacienteId(pacienteId)
                     }
@@ -158,6 +161,13 @@ class PerfilFragment : Fragment() {
 
     private fun actualizarUI(paciente: PacientePerfilResponse?) {
         if (paciente == null) return
+
+        tvPerfilNombre.text = paciente.nombreCompleto.orEmpty()
+            .ifBlank { sessionManager.getNombre().ifBlank { "Paciente" } }
+        tvPerfilTelefono.text = paciente.telefono.orEmpty()
+            .ifBlank { sessionManager.getTelefono().ifBlank { "No disponible" } }
+        tvPerfilCorreo.text = paciente.correo.orEmpty()
+            .ifBlank { sessionManager.getCorreo().ifBlank { "No disponible" } }
 
         val edad = paciente.edad
         tvPerfilEdad.text = if (edad != null) "$edad años" else "--"

@@ -1,9 +1,9 @@
 package com.beatwatch.app
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
 import com.beatwatch.app.utils.SessionManager
@@ -55,11 +55,8 @@ class InicioActivity : AppCompatActivity() {
 
     private fun configurarListener() {
         btnContinuar.setOnClickListener {
-            Toast.makeText(
-                this,
-                "Enlace del reloj pendiente de implementar",
-                Toast.LENGTH_SHORT
-            ).show()
+            startActivity(Intent(this, ConectarDispositivoActivity::class.java))
+            finish()
         }
     }
 }

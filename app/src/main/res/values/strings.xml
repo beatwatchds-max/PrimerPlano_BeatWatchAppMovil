@@ -106,7 +106,5 @@
     <!-- Panel principal -->
     <string name="dashboard_first_pulse_label">Primer pulso registrado</string>
     <string name="dashboard_no_pulse">Sin registros de pulso</string>
-    <string name="dashboard_first_pulse">Primer pulso registrado: %1$d bpm</string>
     <string name="dashboard_pulse_registered">Registro disponible</string>
-    <string name="dashboard_no_wearable_connection">Sin conexión al wearable</string>
 </resources>

@@ -46,6 +46,13 @@ class RegistroPacienteActivity : AppCompatActivity() {
         sessionManager = SessionManager.getInstance(this)
         pacienteRepository = PacienteRepository()
 
+        if (!sessionManager.getRol().equals("Paciente", ignoreCase = true)) {
+            Toast.makeText(this, "Solo los pacientes pueden registrar este perfil.", Toast.LENGTH_LONG).show()
+            startActivity(Intent(this, MainActivity::class.java))
+            finish()
+            return
+        }
+
         inicializarVistas()
         configurarSpinners()
         configurarListeners()
@@ -302,12 +309,18 @@ class RegistroPacienteActivity : AppCompatActivity() {
                         ?: body?._id
                         ?: ""
 
-                    if (pacienteId.isNotBlank()) {
-                        sessionManager.guardarPacienteId(pacienteId)
-                        Log.d("SESSION_DEBUG", "pacienteId guardado: $pacienteId")
-                    } else {
+                    if (pacienteId.isBlank()) {
                         Log.e("SESSION_DEBUG", "No se recibió pacienteId en respuesta del perfil")
+                        Toast.makeText(
+                            this@RegistroPacienteActivity,
+                            "No se pudo completar el registro del paciente.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        return@launch
                     }
+
+                    sessionManager.guardarPacienteId(pacienteId)
+                    Log.d("SESSION_DEBUG", "pacienteId guardado: $pacienteId")
 
                     sessionManager.guardarEstadoFormularios(
                         perfilCompletado = true,

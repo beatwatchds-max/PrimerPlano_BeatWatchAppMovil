@@ -87,7 +87,8 @@
                 android:id="@+id/etCurp"
                 style="@style/InputForm"
                 android:hint="@string/hint_curp"
-                android:inputType="textCapCharacters" />
+                android:inputType="textCapCharacters"
+                android:maxLength="18" />
 
             <!-- ==================== EDAD ==================== -->
             <TextView

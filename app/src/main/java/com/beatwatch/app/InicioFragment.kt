@@ -12,7 +12,6 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -31,13 +30,9 @@ class InicioFragment : Fragment() {
 
     private lateinit var tvFrecuenciaCardiaca: TextView
     private lateinit var tvEstadoFrecuencia: TextView
-    private lateinit var tvEstadoReloj: TextView
-    private lateinit var tvUltimoPulso: TextView
     private lateinit var tvNombrePaciente: TextView
     private lateinit var tvDetallesPaciente: TextView
     private lateinit var tvDiagnosticoPaciente: TextView
-    private lateinit var switchReloj: SwitchCompat
-    private lateinit var btnTomarPulso: View
     private lateinit var sessionManager: SessionManager
     private lateinit var pacienteRepository: PacienteRepository
     private lateinit var dispositivoRepository: DispositivoRepository
@@ -68,13 +63,9 @@ class InicioFragment : Fragment() {
 
         tvFrecuenciaCardiaca = view.findViewById(R.id.tvFrecuenciaCardiaca)
         tvEstadoFrecuencia = view.findViewById(R.id.tvEstadoFrecuencia)
-        tvEstadoReloj = view.findViewById(R.id.tvEstadoReloj)
-        tvUltimoPulso = view.findViewById(R.id.tvUltimoPulso)
         tvNombrePaciente = view.findViewById(R.id.tvNombrePaciente)
         tvDetallesPaciente = view.findViewById(R.id.tvDetallesPaciente)
         tvDiagnosticoPaciente = view.findViewById(R.id.tvDiagnosticoPaciente)
-        switchReloj = view.findViewById(R.id.switchReloj)
-        btnTomarPulso = view.findViewById(R.id.btnTomarPulso)
 
         rvDispositivos = view.findViewById(R.id.rvDispositivos)
         tvCargandoDispositivos = view.findViewById(R.id.tvCargandoDispositivos)
@@ -96,8 +87,6 @@ class InicioFragment : Fragment() {
             cargarDispositivos()
             cargarPrimerPulso()
         }
-        configurarSwitchReloj()
-        configurarBotonPulso()
         configurarCardsRapidas(view)
         configurarListenersDispositivos()
     }
@@ -141,7 +130,10 @@ class InicioFragment : Fragment() {
                 if (response.isSuccessful) {
                     val paciente = response.body()
 
-                    val pacienteId = paciente?.pacienteId.orEmpty()
+                    val pacienteId = paciente?.pacienteId
+                        ?: paciente?.id
+                        ?: paciente?._id
+                        ?: ""
                     if (pacienteId.isNotBlank()) {
                         sessionManager.guardarPacienteId(pacienteId)
                         cargarDispositivos()
@@ -203,7 +195,6 @@ class InicioFragment : Fragment() {
 
                 val frecuencia = primerRegistro.frecuenciaCardiaca ?: return@launch
                 tvFrecuenciaCardiaca.text = frecuencia.toString()
-                tvUltimoPulso.text = getString(R.string.dashboard_first_pulse, frecuencia)
                 tvEstadoFrecuencia.text = getString(R.string.dashboard_pulse_registered)
             } catch (e: IOException) {
                 Log.e("PULSO_INFO", "Error de conexión", e)
@@ -468,36 +459,6 @@ class InicioFragment : Fragment() {
     private fun redirigirLogin() {
         startActivity(Intent(requireContext(), LoginActivity::class.java))
         activity?.finish()
-    }
-
-    private fun configurarSwitchReloj() {
-        switchReloj.isChecked = false
-        switchReloj.isEnabled = false
-        tvEstadoReloj.text = getString(R.string.dashboard_no_wearable_connection)
-        btnTomarPulso.isEnabled = false
-        btnTomarPulso.alpha = 0.5f
-
-        switchReloj.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                tvEstadoReloj.text = "Encendido"
-                btnTomarPulso.isEnabled = true
-                btnTomarPulso.alpha = 1.0f
-            } else {
-                tvEstadoReloj.text = "Apagado"
-                btnTomarPulso.isEnabled = false
-                btnTomarPulso.alpha = 0.5f
-            }
-        }
-    }
-
-    private fun configurarBotonPulso() {
-        btnTomarPulso.setOnClickListener {
-            Toast.makeText(
-                requireContext(),
-                "La medición requiere conexión con el wearable.",
-                Toast.LENGTH_LONG
-            ).show()
-        }
     }
 
     private fun configurarCardsRapidas(view: View) {
