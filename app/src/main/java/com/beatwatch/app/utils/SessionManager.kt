@@ -31,6 +31,7 @@ class SessionManager private constructor(context: Context) {
         private const val KEY_PERFIL_COMPLETADO = "perfilCompletado"
         private const val KEY_DIAGNOSTICO_COMPLETADO = "diagnosticoCompletado"
         private const val KEY_DISPOSITIVO_VINCULADO = "dispositivoVinculado"
+        private const val KEY_FCM_TOKEN = "fcmToken"
     }
 
     fun guardarSesion(
@@ -72,6 +73,12 @@ class SessionManager private constructor(context: Context) {
     fun getRol(): String = prefs.getString(KEY_ROL, "") ?: ""
 
     fun getIdLicencia(): String = prefs.getString(KEY_ID_LICENCIA, "") ?: ""
+
+    fun guardarFcmToken(token: String) {
+        prefs.edit().putString(KEY_FCM_TOKEN, token).apply()
+    }
+
+    fun getFcmToken(): String = prefs.getString(KEY_FCM_TOKEN, "") ?: ""
 
     fun guardarPacienteId(pacienteId: String) {
         prefs.edit()
