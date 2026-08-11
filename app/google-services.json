@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "514771442282",
+    "project_id": "beatwatch-ee5d4",
+    "storage_bucket": "beatwatch-ee5d4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:514771442282:android:afcbaa01563f08cf798813",
+        "android_client_info": {
+          "package_name": "com.beatwatch.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_0zdiZsh4XaZqJ9jiR7OVsr_U8mkQ6m4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
