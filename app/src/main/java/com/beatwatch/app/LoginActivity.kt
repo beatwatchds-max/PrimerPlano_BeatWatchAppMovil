@@ -1,6 +1,9 @@
 package com.beatwatch.app
 
 import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.EditText
@@ -10,6 +13,7 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.lifecycle.lifecycleScope
 import com.beatwatch.app.data.repository.AuthRepository
 import com.beatwatch.app.utils.SessionManager
+import com.beatwatch.app.notifications.FcmTokenManager
 import kotlinx.coroutines.launch
 import java.io.IOException
 
@@ -28,6 +32,7 @@ class LoginActivity : AppCompatActivity() {
         btnLogin = findViewById(R.id.btnLogin)
         authRepository = AuthRepository()
         sessionManager = SessionManager.getInstance(this)
+        requestNotificationPermission()
 
         btnLogin.setOnClickListener {
             val token = etToken.text.toString().trim()
@@ -127,6 +132,7 @@ class LoginActivity : AppCompatActivity() {
                     )
 
                     sessionManager.guardarDispositivoVinculado(dispositivoVinculado)
+                    FcmTokenManager.fetchAndSync(this@LoginActivity)
 
                     Log.d("SESSION_DEBUG", "Sesión guardada")
                     Log.d("SESSION_DEBUG", "token existe: ${sessionManager.getToken().isNotBlank()}")
@@ -208,4 +214,16 @@ class LoginActivity : AppCompatActivity() {
 
     private fun esPaciente(rol: String?): Boolean =
         rol.equals("Paciente", ignoreCase = true)
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_PERMISSION_REQUEST_CODE)
+        }
+    }
+
+    private companion object {
+        const val NOTIFICATION_PERMISSION_REQUEST_CODE = 1001
+    }
 }
