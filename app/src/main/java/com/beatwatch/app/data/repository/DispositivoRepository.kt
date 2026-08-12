@@ -4,6 +4,7 @@ import com.beatwatch.app.data.api.RetrofitClient
 import com.beatwatch.app.data.model.ActualizarDispositivoRequest
 import com.beatwatch.app.data.model.DispositivoResponse
 import com.beatwatch.app.data.model.EmparejarDispositivoRequest
+import com.beatwatch.app.data.model.MedicionesResponse
 import retrofit2.Response
 
 class DispositivoRepository {
@@ -13,6 +14,16 @@ class DispositivoRepository {
         pacienteId: String
     ): Response<List<DispositivoResponse>> {
         return RetrofitClient.dispositivoApiService.obtenerDispositivos(
+            authorization = "Bearer $jwt",
+            idPaciente = pacienteId
+        )
+    }
+
+    suspend fun obtenerMedicionesPaciente(
+        jwt: String,
+        pacienteId: String
+    ): Response<MedicionesResponse> {
+        return RetrofitClient.dispositivoApiService.obtenerMedicionesPaciente(
             authorization = "Bearer $jwt",
             idPaciente = pacienteId
         )

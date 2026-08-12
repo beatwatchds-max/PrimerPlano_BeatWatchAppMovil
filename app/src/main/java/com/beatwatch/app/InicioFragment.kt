@@ -19,7 +19,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.beatwatch.app.data.model.ActualizarDispositivoRequest
 import com.beatwatch.app.data.model.DispositivoResponse
 import com.beatwatch.app.data.repository.DispositivoRepository
-import com.beatwatch.app.data.repository.HistorialRepository
 import com.beatwatch.app.data.repository.PacienteRepository
 import com.beatwatch.app.ui.adapters.DispositivoAdapter
 import com.beatwatch.app.utils.SessionManager
@@ -36,7 +35,6 @@ class InicioFragment : Fragment() {
     private lateinit var sessionManager: SessionManager
     private lateinit var pacienteRepository: PacienteRepository
     private lateinit var dispositivoRepository: DispositivoRepository
-    private lateinit var historialRepository: HistorialRepository
 
     private lateinit var rvDispositivos: RecyclerView
     private lateinit var tvCargandoDispositivos: TextView
@@ -59,7 +57,6 @@ class InicioFragment : Fragment() {
         sessionManager = SessionManager.getInstance(requireContext())
         pacienteRepository = PacienteRepository()
         dispositivoRepository = DispositivoRepository()
-        historialRepository = HistorialRepository()
 
         tvFrecuenciaCardiaca = view.findViewById(R.id.tvFrecuenciaCardiaca)
         tvEstadoFrecuencia = view.findViewById(R.id.tvEstadoFrecuencia)
@@ -177,18 +174,22 @@ class InicioFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                val response = historialRepository.obtenerHistorial(jwt, pacienteId)
+                val response = dispositivoRepository.obtenerMedicionesPaciente(jwt, pacienteId)
                 if (!response.isSuccessful) return@launch
 
-                val primerRegistro = response.body()
-                    .orEmpty()
-                    .filter { it.frecuenciaCardiaca != null }
-                    .minWithOrNull(compareBy { it.fecha ?: "" })
+                val ultimaMedicion = response.body()
+                    ?.mediciones
+                    ?.maxByOrNull { it.timestamp.orEmpty() }
                     ?: return@launch
 
-                val frecuencia = primerRegistro.frecuenciaCardiaca ?: return@launch
+                val frecuencia = ultimaMedicion.frecuenciaCardiacaBpm ?: return@launch
                 tvFrecuenciaCardiaca.text = frecuencia.toString()
-                tvEstadoFrecuencia.text = getString(R.string.dashboard_pulse_registered)
+                val saturacion = ultimaMedicion.saturacionOxigenoSpO2
+                tvEstadoFrecuencia.text = if (saturacion != null) {
+                    "${getString(R.string.dashboard_pulse_registered)} · Oxígeno $saturacion%"
+                } else {
+                    getString(R.string.dashboard_pulse_registered)
+                }
             } catch (e: IOException) {
                 Log.e("PULSO_INFO", "Error de conexión", e)
             } catch (e: Exception) {
