@@ -96,13 +96,6 @@ class InicioFragment : Fragment() {
         val jwt = sessionManager.getToken()
         val usuarioId = sessionManager.getUsuarioId()
 
-        if (!sessionManager.getRol().equals("Paciente", ignoreCase = true)) {
-            tvNombrePaciente.text = nombre.ifBlank { "Usuario" }
-            tvDetallesPaciente.text = "Perfil de paciente no disponible"
-            tvDiagnosticoPaciente.text = "Requiere soporte del servidor"
-            return
-        }
-
         if (jwt.isBlank()) {
             Toast.makeText(requireContext(), "Sesión inválida. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
             redirigirLogin()
