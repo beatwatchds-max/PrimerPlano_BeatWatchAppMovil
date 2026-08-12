@@ -19,7 +19,7 @@
             android:textSize="20sp"
             android:textStyle="bold" />
 
-        <!-- Card: Tendencia semanal -->
+        <!-- Card: Resultados del modelo -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -32,24 +32,26 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Tendencia semanal"
+                android:text="Análisis de salud"
                 android:textColor="@color/beatwatch_dark_blue"
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
-            <com.beatwatch.app.WeeklyTrendView
-                android:id="@+id/weeklyTrendView"
+            <TextView
+                android:id="@+id/tvResumenAnalisis"
                 android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:layout_marginTop="8dp" />
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:textColor="#6B7A90"
+                android:textSize="14sp" />
         </LinearLayout>
 
-        <!-- Sección: Registros recientes -->
+        <!-- Sección: Recomendaciones -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:text="Registros recientes"
+            android:text="Recomendaciones"
             android:textColor="@color/beatwatch_dark_blue"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -71,7 +73,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="30dp"
             android:gravity="center"
-            android:text="Aún no hay registros en el historial."
+            android:text="Aún no hay recomendaciones disponibles."
             android:textColor="#6B7A90"
             android:textSize="14sp"
             android:visibility="gone" />
@@ -87,14 +89,13 @@
             android:textSize="14sp"
             android:visibility="gone" />
 
-        <!-- Lista de registros -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvHistorial"
+        <LinearLayout
+            android:id="@+id/contenedorRecomendaciones"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:layout_marginBottom="20dp"
-            android:nestedScrollingEnabled="false" />
+            android:orientation="vertical" />
 
         <View
             android:layout_width="match_parent"
