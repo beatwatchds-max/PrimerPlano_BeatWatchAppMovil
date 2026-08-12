@@ -22,6 +22,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.beatwatch.app.data.model.ActualizarPacienteRequest
 import com.beatwatch.app.data.model.PacientePerfilResponse
+import com.beatwatch.app.data.repository.AuthRepository
 import com.beatwatch.app.data.repository.PacienteRepository
 import com.beatwatch.app.utils.SessionManager
 import kotlinx.coroutines.launch
@@ -197,9 +198,26 @@ class PerfilFragment : Fragment() {
         }
 
         btnCerrarSesion.setOnClickListener {
-            sessionManager.cerrarSesion()
-            startActivity(Intent(requireContext(), LoginActivity::class.java))
-            activity?.finish()
+            cerrarSesion()
+        }
+    }
+
+    private fun cerrarSesion() {
+        val jwt = sessionManager.getToken()
+        btnCerrarSesion.isEnabled = false
+
+        lifecycleScope.launch {
+            try {
+                if (jwt.isNotBlank()) {
+                    AuthRepository().cerrarSesionMovil(jwt)
+                }
+            } catch (e: IOException) {
+                Log.w("LOGOUT_API", "No se pudo notificar el cierre de sesión", e)
+            } finally {
+                sessionManager.cerrarSesion()
+                startActivity(Intent(requireContext(), LoginActivity::class.java))
+                activity?.finish()
+            }
         }
     }
 
