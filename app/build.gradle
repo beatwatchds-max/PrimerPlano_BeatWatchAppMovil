@@ -20,8 +20,11 @@ android {
     }
 
     buildTypes {
-        release {
+        debug {
             minifyEnabled false
+        }
+        release {
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
@@ -33,6 +36,10 @@ android {
 
     kotlinOptions {
         jvmTarget = '17'
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 }
 
@@ -54,4 +61,5 @@ dependencies {
     // ZXing QR Scanner
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
     implementation 'com.google.firebase:firebase-messaging:24.1.0'
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
 }

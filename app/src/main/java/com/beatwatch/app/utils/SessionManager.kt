@@ -2,11 +2,19 @@ package com.beatwatch.app.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 class SessionManager private constructor(context: Context) {
 
-    private val prefs: SharedPreferences =
-        context.applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+    private val appContext = context.applicationContext
+    private val prefs: SharedPreferences = EncryptedSharedPreferences.create(
+        appContext,
+        SECURE_PREF_NAME,
+        MasterKey.Builder(appContext).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    ).also { migratePlaintextSession(appContext, it) }
 
     companion object {
         @Volatile
@@ -19,6 +27,7 @@ class SessionManager private constructor(context: Context) {
         }
 
         private const val PREF_NAME = "beatwatch_session"
+        private const val SECURE_PREF_NAME = "beatwatch_secure_session"
         private const val KEY_TOKEN = "token"
         private const val KEY_USUARIO_ID = "usuarioId"
         private const val KEY_NOMBRE = "nombre"
@@ -32,6 +41,27 @@ class SessionManager private constructor(context: Context) {
         private const val KEY_DIAGNOSTICO_COMPLETADO = "diagnosticoCompletado"
         private const val KEY_DISPOSITIVO_VINCULADO = "dispositivoVinculado"
         private const val KEY_FCM_TOKEN = "fcmToken"
+
+        private fun migratePlaintextSession(context: Context, securePrefs: SharedPreferences) {
+            if (securePrefs.all.isNotEmpty()) return
+
+            val legacyPrefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+            if (legacyPrefs.all.isEmpty()) return
+
+            val editor = securePrefs.edit()
+            legacyPrefs.all.forEach { (key, value) ->
+                when (value) {
+                    is String -> editor.putString(key, value)
+                    is Boolean -> editor.putBoolean(key, value)
+                    is Int -> editor.putInt(key, value)
+                    is Long -> editor.putLong(key, value)
+                    is Float -> editor.putFloat(key, value)
+                    is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
+                }
+            }
+            editor.apply()
+            legacyPrefs.edit().clear().apply()
+        }
     }
 
     fun guardarSesion(
