@@ -13,4 +13,8 @@ class AuthRepository {
         val request = LoginMobileRequest(token = token)
         return api.iniciarSesionMovil(request)
     }
+
+    suspend fun cerrarSesionMovil(jwt: String): Response<Unit> {
+        return api.cerrarSesionMovil("Bearer $jwt")
+    }
 }

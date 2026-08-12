@@ -3,6 +3,7 @@ package com.beatwatch.app.data.api
 import com.beatwatch.app.data.model.ActualizarDispositivoRequest
 import com.beatwatch.app.data.model.DispositivoResponse
 import com.beatwatch.app.data.model.EmparejarDispositivoRequest
+import com.beatwatch.app.data.model.MedicionesResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -25,6 +26,14 @@ interface DispositivoApiService {
         @Header("Authorization") authorization: String,
         @Query("idPaciente") idPaciente: String
     ): Response<List<DispositivoResponse>>
+
+    @Headers("Accept: application/json")
+    @GET("api/Pacientes/{idPaciente}/mediciones")
+    suspend fun obtenerMedicionesPaciente(
+        @Header("Authorization") authorization: String,
+        @Path("idPaciente") idPaciente: String,
+        @Query("limite") limite: Int = 1
+    ): Response<MedicionesResponse>
 
     @Headers(
         "Content-Type: application/json",

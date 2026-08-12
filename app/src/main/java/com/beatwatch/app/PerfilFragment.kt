@@ -22,6 +22,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.beatwatch.app.data.model.ActualizarPacienteRequest
 import com.beatwatch.app.data.model.PacientePerfilResponse
+import com.beatwatch.app.data.repository.AuthRepository
 import com.beatwatch.app.data.repository.PacienteRepository
 import com.beatwatch.app.utils.SessionManager
 import kotlinx.coroutines.launch
@@ -197,10 +198,41 @@ class PerfilFragment : Fragment() {
         }
 
         btnCerrarSesion.setOnClickListener {
-            sessionManager.cerrarSesion()
-            startActivity(Intent(requireContext(), LoginActivity::class.java))
-            activity?.finish()
+            cerrarSesion()
         }
+    }
+
+    private fun cerrarSesion() {
+        val jwt = sessionManager.getToken()
+        btnCerrarSesion.isEnabled = false
+
+        lifecycleScope.launch {
+            try {
+                if (jwt.isBlank()) {
+                    finalizarCierreSesion()
+                    return@launch
+                }
+
+                val response = AuthRepository().cerrarSesionMovil(jwt)
+                if (response.isSuccessful) {
+                    finalizarCierreSesion()
+                } else {
+                    Log.e("LOGOUT_API", "El servidor rechazó el cierre: ${response.code()}")
+                    Toast.makeText(requireContext(), "No se pudo cerrar la sesión en el servidor.", Toast.LENGTH_LONG).show()
+                    btnCerrarSesion.isEnabled = true
+                }
+            } catch (e: IOException) {
+                Log.w("LOGOUT_API", "No se pudo notificar el cierre de sesión", e)
+                Toast.makeText(requireContext(), "No se pudo conectar para cerrar la sesión.", Toast.LENGTH_LONG).show()
+                btnCerrarSesion.isEnabled = true
+            }
+        }
+    }
+
+    private fun finalizarCierreSesion() {
+        sessionManager.cerrarSesion()
+        startActivity(Intent(requireContext(), LoginActivity::class.java))
+        activity?.finish()
     }
 
     private fun mostrarDialogoEditarPerfil() {
