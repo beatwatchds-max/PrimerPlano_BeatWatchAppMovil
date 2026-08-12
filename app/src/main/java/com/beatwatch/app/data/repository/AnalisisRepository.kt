@@ -9,7 +9,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 class AnalisisRepository {
 
     companion object {
-        const val BASE_URL = "https://backend-beatwatch.onrender.com/"
+        const val BASE_URL = "https://machine-learning-beatwatch.onrender.com/"
         private const val ML_API_KEY = "3853049439852348258"
     }
 
