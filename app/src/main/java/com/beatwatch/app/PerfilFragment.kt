@@ -208,17 +208,31 @@ class PerfilFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                if (jwt.isNotBlank()) {
-                    AuthRepository().cerrarSesionMovil(jwt)
+                if (jwt.isBlank()) {
+                    finalizarCierreSesion()
+                    return@launch
+                }
+
+                val response = AuthRepository().cerrarSesionMovil(jwt)
+                if (response.isSuccessful) {
+                    finalizarCierreSesion()
+                } else {
+                    Log.e("LOGOUT_API", "El servidor rechazó el cierre: ${response.code()}")
+                    Toast.makeText(requireContext(), "No se pudo cerrar la sesión en el servidor.", Toast.LENGTH_LONG).show()
+                    btnCerrarSesion.isEnabled = true
                 }
             } catch (e: IOException) {
                 Log.w("LOGOUT_API", "No se pudo notificar el cierre de sesión", e)
-            } finally {
-                sessionManager.cerrarSesion()
-                startActivity(Intent(requireContext(), LoginActivity::class.java))
-                activity?.finish()
+                Toast.makeText(requireContext(), "No se pudo conectar para cerrar la sesión.", Toast.LENGTH_LONG).show()
+                btnCerrarSesion.isEnabled = true
             }
         }
+    }
+
+    private fun finalizarCierreSesion() {
+        sessionManager.cerrarSesion()
+        startActivity(Intent(requireContext(), LoginActivity::class.java))
+        activity?.finish()
     }
 
     private fun mostrarDialogoEditarPerfil() {
