@@ -107,10 +107,9 @@ class HistorialFragment : Fragment() {
                             tvHistorialError.visibility = View.VISIBLE
                             tvHistorialError.text = "No se pudo analizar la información del paciente."
                         }
-                        401 -> {
-                            Toast.makeText(requireContext(), "Sesión expirada. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
-                            sessionManager.cerrarSesion()
-                            redirigirLogin()
+                        401, 403 -> {
+                            tvHistorialError.visibility = View.VISIBLE
+                            tvHistorialError.text = "El servicio de recomendaciones rechazó sus credenciales."
                         }
                         404 -> {
                             tvHistorialVacio.visibility = View.VISIBLE
