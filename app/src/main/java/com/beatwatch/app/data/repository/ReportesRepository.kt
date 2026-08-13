@@ -6,14 +6,14 @@ import retrofit2.Response
 
 class ReportesRepository {
 
-    suspend fun obtenerResumenTablero(
+    suspend fun obtenerResumenGraficas(
         jwt: String,
         idPaciente: String,
         dias: Int
     ): Response<ReporteResumenResponse> {
-        return RetrofitClient.tableroApiService.obtenerResumenTablero(
+        return RetrofitClient.tableroApiService.obtenerResumenGraficas(
             authorization = "Bearer $jwt",
-            idPaciente = idPaciente,
+            patientId = idPaciente,
             dias = dias
         )
     }

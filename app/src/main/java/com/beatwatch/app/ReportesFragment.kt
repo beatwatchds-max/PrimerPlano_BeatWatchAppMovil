@@ -1,6 +1,5 @@
 package com.beatwatch.app
 
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -105,8 +104,7 @@ class ReportesFragment : Fragment() {
         val idPaciente = sessionManager.getPacienteId()
 
         if (jwt.isBlank()) {
-            Toast.makeText(requireContext(), "Sesión inválida. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
-            redirigirLogin()
+            mostrarError("No se encontró una sesión válida.")
             return
         }
 
@@ -121,12 +119,12 @@ class ReportesFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                Log.d("REPORTES_API", "Endpoint: api/tablero/resumen")
+                Log.d("REPORTES_API", "Endpoint: api/graficas/$idPaciente/resumen")
                 Log.d("REPORTES_API", "JWT existe: ${jwt.isNotBlank()}")
                 Log.d("REPORTES_API", "idPaciente: $idPaciente")
                 Log.d("REPORTES_API", "dias: $diasSeleccionados")
 
-                val response = reportesRepository.obtenerResumenTablero(jwt, idPaciente, diasSeleccionados)
+                val response = reportesRepository.obtenerResumenGraficas(jwt, idPaciente, diasSeleccionados)
 
                 Log.d("REPORTES_API", "HTTP code: ${response.code()}")
                 Log.d("REPORTES_API", "isSuccessful: ${response.isSuccessful}")
@@ -147,9 +145,7 @@ class ReportesFragment : Fragment() {
                             mostrarError("Solicitud inválida. Verifica el paciente.")
                         }
                         401 -> {
-                            Toast.makeText(requireContext(), "Sesión expirada. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
-                            sessionManager.cerrarSesion()
-                            redirigirLogin()
+                            mostrarError("No se pudo autorizar la consulta. Intenta nuevamente.")
                         }
                         404 -> {
                             mostrarError("No hay reportes disponibles.")
@@ -285,8 +281,4 @@ class ReportesFragment : Fragment() {
         btnCompartir.visibility = View.VISIBLE
     }
 
-    private fun redirigirLogin() {
-        startActivity(Intent(requireContext(), LoginActivity::class.java))
-        activity?.finish()
-    }
 }
