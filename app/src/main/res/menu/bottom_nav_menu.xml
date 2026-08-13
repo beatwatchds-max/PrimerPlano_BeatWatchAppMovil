@@ -7,11 +7,11 @@
     <item
         android:id="@+id/nav_historial"
         android:icon="@drawable/ic_historial"
-        android:title="Analisis Beatwatch" />
+        android:title="Analisis" />
     <item
         android:id="@+id/nav_reportes"
         android:icon="@drawable/ic_reportes"
-        android:title="Reportes" />
+        android:title="Resumen" />
     <item
         android:id="@+id/nav_perfil"
         android:icon="@drawable/ic_perfil"
