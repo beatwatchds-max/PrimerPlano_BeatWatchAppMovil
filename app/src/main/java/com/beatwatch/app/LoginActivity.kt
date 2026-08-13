@@ -32,6 +32,9 @@ class LoginActivity : AppCompatActivity() {
         btnLogin = findViewById(R.id.btnLogin)
         authRepository = AuthRepository()
         sessionManager = SessionManager.getInstance(this)
+
+        if (restaurarSesion()) return
+
         requestNotificationPermission()
 
         btnLogin.setOnClickListener {
@@ -214,6 +217,22 @@ class LoginActivity : AppCompatActivity() {
 
     private fun esPaciente(rol: String?): Boolean =
         rol.equals("Paciente", ignoreCase = true)
+
+    private fun restaurarSesion(): Boolean {
+        if (!sessionManager.isLoggedIn() || sessionManager.getToken().isBlank()) return false
+
+        val destino = when {
+            !esPaciente(sessionManager.getRol()) -> MainActivity::class.java
+            !sessionManager.isPerfilCompletado() -> RegistroPacienteActivity::class.java
+            !sessionManager.isDiagnosticoCompletado() -> RegistroArritmiaActivity::class.java
+            !sessionManager.isDispositivoVinculado() -> ConectarDispositivoActivity::class.java
+            else -> MainActivity::class.java
+        }
+
+        startActivity(Intent(this, destino))
+        finish()
+        return true
+    }
 
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

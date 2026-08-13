@@ -139,9 +139,7 @@ class PerfilFragment : Fragment() {
 
                     when (response.code()) {
                         401 -> {
-                            Toast.makeText(requireContext(), "Sesión expirada. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
-                            sessionManager.cerrarSesion()
-                            redirigirLogin()
+                            Toast.makeText(requireContext(), "No se pudo autorizar la consulta. Intenta nuevamente.", Toast.LENGTH_LONG).show()
                         }
                         404 -> {
                             Toast.makeText(requireContext(), "No se encontró perfil del paciente.", Toast.LENGTH_LONG).show()
@@ -401,9 +399,7 @@ class PerfilFragment : Fragment() {
                         val mensaje = when (response.code()) {
                             400 -> "Datos inválidos. Verifica la información."
                             401 -> {
-                                sessionManager.cerrarSesion()
-                                redirigirLogin()
-                                "Sesión expirada. Inicia sesión nuevamente."
+                                "No se pudo autorizar la actualización. Intenta nuevamente."
                             }
                             404 -> "Perfil no encontrado."
                             in 500..599 -> "Error del servidor. Intenta más tarde."

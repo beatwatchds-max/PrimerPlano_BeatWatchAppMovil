@@ -18,10 +18,14 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.beatwatch.app.data.model.ActualizarDispositivoRequest
 import com.beatwatch.app.data.model.DispositivoResponse
+import com.beatwatch.app.data.local.PulsacionLocal
+import com.beatwatch.app.data.local.PulsacionesDatabase
 import com.beatwatch.app.data.repository.DispositivoRepository
 import com.beatwatch.app.data.repository.PacienteRepository
 import com.beatwatch.app.ui.adapters.DispositivoAdapter
 import com.beatwatch.app.utils.SessionManager
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.IOException
 
@@ -35,6 +39,7 @@ class InicioFragment : Fragment() {
     private lateinit var sessionManager: SessionManager
     private lateinit var pacienteRepository: PacienteRepository
     private lateinit var dispositivoRepository: DispositivoRepository
+    private lateinit var pulsacionesDatabase: PulsacionesDatabase
 
     private lateinit var rvDispositivos: RecyclerView
     private lateinit var tvCargandoDispositivos: TextView
@@ -42,6 +47,7 @@ class InicioFragment : Fragment() {
     private lateinit var tvAgregarDispositivo: TextView
     private lateinit var btnAgregarDispositivoEmpty: View
     private lateinit var adapter: DispositivoAdapter
+    private var actualizacionPulsacionesJob: Job? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -57,6 +63,7 @@ class InicioFragment : Fragment() {
         sessionManager = SessionManager.getInstance(requireContext())
         pacienteRepository = PacienteRepository()
         dispositivoRepository = DispositivoRepository()
+        pulsacionesDatabase = PulsacionesDatabase(requireContext())
 
         tvFrecuenciaCardiaca = view.findViewById(R.id.tvFrecuenciaCardiaca)
         tvEstadoFrecuencia = view.findViewById(R.id.tvEstadoFrecuencia)
@@ -81,11 +88,32 @@ class InicioFragment : Fragment() {
 
         cargarDatosPaciente()
         if (sessionManager.getPacienteId().isNotBlank()) {
+            mostrarPulsacionLocal(sessionManager.getPacienteId())
             cargarDispositivos()
-            cargarPrimerPulso()
         }
         configurarCardsRapidas(view)
         configurarListenersDispositivos()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        iniciarActualizacionPulsaciones()
+    }
+
+    override fun onStop() {
+        actualizacionPulsacionesJob?.cancel()
+        actualizacionPulsacionesJob = null
+        super.onStop()
+    }
+
+    private fun iniciarActualizacionPulsaciones() {
+        actualizacionPulsacionesJob?.cancel()
+        actualizacionPulsacionesJob = viewLifecycleOwner.lifecycleScope.launch {
+            while (true) {
+                cargarPrimerPulso()
+                delay(INTERVALO_ACTUALIZACION_PULSACIONES_MS)
+            }
+        }
     }
 
     private fun cargarDatosPaciente() {
@@ -126,6 +154,7 @@ class InicioFragment : Fragment() {
                         ?: ""
                     if (pacienteId.isNotBlank()) {
                         sessionManager.guardarPacienteId(pacienteId)
+                        mostrarPulsacionLocal(pacienteId)
                         cargarDispositivos()
                         cargarPrimerPulso()
                     }
@@ -147,9 +176,7 @@ class InicioFragment : Fragment() {
 
                     when (response.code()) {
                         401 -> {
-                            Toast.makeText(requireContext(), "Sesión expirada. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
-                            sessionManager.cerrarSesion()
-                            redirigirLogin()
+                            Toast.makeText(requireContext(), "No se pudo autorizar la consulta. Intenta nuevamente.", Toast.LENGTH_LONG).show()
                         }
                         404 -> {
                             Toast.makeText(requireContext(), "No se encontró perfil del paciente.", Toast.LENGTH_LONG).show()
@@ -168,34 +195,45 @@ class InicioFragment : Fragment() {
     }
 
     private fun cargarPrimerPulso() {
-        val jwt = sessionManager.getToken()
         val pacienteId = sessionManager.getPacienteId()
-        if (jwt.isBlank() || pacienteId.isBlank()) return
+        if (pacienteId.isBlank()) return
 
         lifecycleScope.launch {
             try {
-                val response = dispositivoRepository.obtenerMedicionesPaciente(jwt, pacienteId)
+                val response = dispositivoRepository.obtenerUltimaMedicionFirebase()
                 if (!response.isSuccessful) return@launch
 
-                val ultimaMedicion = response.body()
-                    ?.mediciones
-                    ?.maxByOrNull { it.timestamp.orEmpty() }
-                    ?: return@launch
+                val ultimaMedicion = response.body() ?: return@launch
 
                 val frecuencia = ultimaMedicion.frecuenciaCardiacaBpm ?: return@launch
-                tvFrecuenciaCardiaca.text = frecuencia.toString()
-                val saturacion = ultimaMedicion.saturacionOxigenoSpO2
-                tvEstadoFrecuencia.text = if (saturacion != null) {
-                    "${getString(R.string.dashboard_pulse_registered)} · Oxígeno $saturacion%"
-                } else {
-                    getString(R.string.dashboard_pulse_registered)
-                }
+                val pulsacion = PulsacionLocal(
+                    frecuenciaCardiacaBpm = frecuencia,
+                    saturacionOxigenoSpO2 = ultimaMedicion.saturacionOxigenoSpO2,
+                    timestamp = ultimaMedicion.timestamp
+                )
+                pulsacionesDatabase.guardarUltimaPulsacion(pacienteId, pulsacion)
+                pintarPulsacion(pulsacion)
             } catch (e: IOException) {
                 Log.e("PULSO_INFO", "Error de conexión", e)
             } catch (e: Exception) {
                 Log.e("PULSO_INFO", "Error inesperado", e)
             }
         }
+    }
+
+    private fun mostrarPulsacionLocal(pacienteId: String) {
+        pulsacionesDatabase.obtenerUltimaPulsacion(pacienteId)?.let(::pintarPulsacion)
+    }
+
+    private fun pintarPulsacion(pulsacion: PulsacionLocal) {
+        tvFrecuenciaCardiaca.text = pulsacion.frecuenciaCardiacaBpm.toString()
+        tvEstadoFrecuencia.text = pulsacion.saturacionOxigenoSpO2?.let {
+            "${getString(R.string.dashboard_pulse_registered)} · Oxígeno $it%"
+        } ?: getString(R.string.dashboard_pulse_registered)
+    }
+
+    private companion object {
+        const val INTERVALO_ACTUALIZACION_PULSACIONES_MS = 30_000L
     }
 
     private fun cargarDispositivos() {
@@ -356,9 +394,7 @@ class InicioFragment : Fragment() {
                         val mensaje = when (response.code()) {
                             400 -> "Datos inválidos. Verifica la información."
                             401 -> {
-                                sessionManager.cerrarSesion()
-                                redirigirLogin()
-                                "Sesión expirada. Inicia sesión nuevamente."
+                                "No se pudo autorizar la actualización. Intenta nuevamente."
                             }
                             404 -> "Dispositivo no encontrado."
                             in 500..599 -> "Error del servidor. Intenta más tarde."
@@ -429,10 +465,8 @@ class InicioFragment : Fragment() {
                     Log.e("DISPOSITIVOS_DELETE", "ErrorBody: $errorBody")
 
                     val mensaje = when (response.code()) {
-                        401 -> {
-                            sessionManager.cerrarSesion()
-                            redirigirLogin()
-                            "Sesión expirada. Inicia sesión nuevamente."
+                            401 -> {
+                                "No se pudo autorizar la eliminación. Intenta nuevamente."
                         }
                         404 -> "Dispositivo no encontrado."
                         in 500..599 -> "Error del servidor. Intenta más tarde."
@@ -463,7 +497,13 @@ class InicioFragment : Fragment() {
             )?.selectedItemId = R.id.nav_historial
         }
 
-        view.findViewById<View>(R.id.cardReportes).setOnClickListener {
+        val cardReportes = view.findViewById<View>(R.id.cardReportes)
+        if (sessionManager.getRol().equals("Paciente", ignoreCase = true)) {
+            cardReportes.visibility = View.GONE
+            return
+        }
+
+        cardReportes.setOnClickListener {
             val activity = activity as? MainActivity
             activity?.findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(
                 R.id.bottomNavigation

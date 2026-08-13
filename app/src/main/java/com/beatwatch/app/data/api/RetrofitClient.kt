@@ -30,6 +30,12 @@ object RetrofitClient {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
+    private val firebaseRetrofit = Retrofit.Builder()
+        .baseUrl("https://bpm-g2-default-rtdb.firebaseio.com/")
+        .client(okHttpClient)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
     val authApiService: AuthApiService = retrofit.create(AuthApiService::class.java)
 
     val pacienteApiService: PacienteApiService by lazy {
@@ -42,6 +48,10 @@ object RetrofitClient {
 
     val dispositivoApiService: DispositivoApiService by lazy {
         retrofit.create(DispositivoApiService::class.java)
+    }
+
+    val medicionFirebaseApiService: MedicionFirebaseApiService by lazy {
+        firebaseRetrofit.create(MedicionFirebaseApiService::class.java)
     }
 
     val historialApiService: HistorialApiService by lazy {

@@ -146,14 +146,14 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="Historial"
+                    android:contentDescription="Analisis"
                     android:src="@drawable/ic_historial" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:text="Historial"
+                    android:text="Analisis"
                     android:textColor="@color/beatwatch_dark_blue"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -184,14 +184,14 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="Reportes"
+                    android:contentDescription="Resumen"
                     android:src="@drawable/ic_reportes" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:text="Reportes"
+                    android:text="Resumen"
                     android:textColor="@color/beatwatch_dark_blue"
                     android:textSize="14sp"
                     android:textStyle="bold" />
