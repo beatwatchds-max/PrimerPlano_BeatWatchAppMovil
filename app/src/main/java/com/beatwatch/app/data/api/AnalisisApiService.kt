@@ -6,15 +6,13 @@ import retrofit2.http.Header
 import retrofit2.http.Headers
 import retrofit2.http.POST
 import retrofit2.http.Path
-import retrofit2.http.Query
 
 interface AnalisisApiService {
 
     @Headers("Accept: application/json")
-    @POST("analysis/latest/{patientId}")
+    @POST("api/analisis/{patientId}/latest")
     suspend fun analizarUltimaEstadistica(
-        @Header("x-api-key") apiKey: String,
-        @Path("patientId") patientId: String,
-        @Query("persist") persist: Boolean = true
+        @Header("Authorization") authorization: String,
+        @Path("patientId") patientId: String
     ): Response<AnalisisPacienteResponse>
 }

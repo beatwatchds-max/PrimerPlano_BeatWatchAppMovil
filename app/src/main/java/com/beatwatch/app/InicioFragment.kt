@@ -22,8 +22,10 @@ import com.beatwatch.app.data.local.PulsacionLocal
 import com.beatwatch.app.data.local.PulsacionesDatabase
 import com.beatwatch.app.data.repository.DispositivoRepository
 import com.beatwatch.app.data.repository.PacienteRepository
+import com.beatwatch.app.data.repository.SaludRepository
 import com.beatwatch.app.ui.adapters.DispositivoAdapter
 import com.beatwatch.app.utils.SessionManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -39,6 +41,7 @@ class InicioFragment : Fragment() {
     private lateinit var sessionManager: SessionManager
     private lateinit var pacienteRepository: PacienteRepository
     private lateinit var dispositivoRepository: DispositivoRepository
+    private lateinit var saludRepository: SaludRepository
     private lateinit var pulsacionesDatabase: PulsacionesDatabase
 
     private lateinit var rvDispositivos: RecyclerView
@@ -63,6 +66,7 @@ class InicioFragment : Fragment() {
         sessionManager = SessionManager.getInstance(requireContext())
         pacienteRepository = PacienteRepository()
         dispositivoRepository = DispositivoRepository()
+        saludRepository = SaludRepository()
         pulsacionesDatabase = PulsacionesDatabase(requireContext())
 
         tvFrecuenciaCardiaca = view.findViewById(R.id.tvFrecuenciaCardiaca)
@@ -95,21 +99,20 @@ class InicioFragment : Fragment() {
         configurarListenersDispositivos()
     }
 
-    override fun onStart() {
-        super.onStart()
+    override fun onResume() {
+        super.onResume()
         iniciarActualizacionPulsaciones()
     }
 
-    override fun onStop() {
+    override fun onPause() {
         actualizacionPulsacionesJob?.cancel()
-        actualizacionPulsacionesJob = null
-        super.onStop()
+        super.onPause()
     }
 
     private fun iniciarActualizacionPulsaciones() {
         actualizacionPulsacionesJob?.cancel()
         actualizacionPulsacionesJob = viewLifecycleOwner.lifecycleScope.launch {
-            while (true) {
+            while (isAdded) {
                 cargarPrimerPulso()
                 delay(INTERVALO_ACTUALIZACION_PULSACIONES_MS)
             }
@@ -139,8 +142,6 @@ class InicioFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                Log.d("PACIENTE_INFO", "Endpoint: api/Pacientes/usuario/$usuarioId")
-
                 val response = pacienteRepository.obtenerPacientePorUsuarioId(jwt, usuarioId)
 
                 Log.d("PACIENTE_INFO", "HTTP code: ${response.code()}")
@@ -171,8 +172,7 @@ class InicioFragment : Fragment() {
                     tvDetallesPaciente.text = "$edadTexto · $sangreTexto"
                     tvDiagnosticoPaciente.text = "Diagnóstico no disponible"
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("PACIENTE_INFO", "ErrorBody: $errorBody")
+                    Log.e("PACIENTE_INFO", "Error HTTP ${response.code()}")
 
                     when (response.code()) {
                         401 -> {
@@ -194,35 +194,42 @@ class InicioFragment : Fragment() {
         }
     }
 
-    private fun cargarPrimerPulso() {
+    private suspend fun cargarPrimerPulso() {
         val pacienteId = sessionManager.getPacienteId()
-        if (pacienteId.isBlank()) return
+        val jwt = sessionManager.getToken()
+        if (pacienteId.isBlank() || jwt.isBlank()) return
 
-        lifecycleScope.launch {
-            try {
-                val response = dispositivoRepository.obtenerUltimaMedicionFirebase()
-                if (!response.isSuccessful) return@launch
+        try {
+            val response = saludRepository.obtenerUltimaMedicion(jwt, pacienteId)
+            if (!response.isSuccessful) return
 
-                val ultimaMedicion = response.body() ?: return@launch
+            val ultimaMedicion = response.body() ?: return
 
-                val frecuencia = ultimaMedicion.frecuenciaCardiacaBpm ?: return@launch
-                val pulsacion = PulsacionLocal(
-                    frecuenciaCardiacaBpm = frecuencia,
-                    saturacionOxigenoSpO2 = ultimaMedicion.saturacionOxigenoSpO2,
-                    timestamp = ultimaMedicion.timestamp
-                )
-                pulsacionesDatabase.guardarUltimaPulsacion(pacienteId, pulsacion)
-                pintarPulsacion(pulsacion)
-            } catch (e: IOException) {
-                Log.e("PULSO_INFO", "Error de conexión", e)
-            } catch (e: Exception) {
-                Log.e("PULSO_INFO", "Error inesperado", e)
-            }
+            guardarYPintarPulsacion(ultimaMedicion)
+        } catch (e: IOException) {
+            Log.e("PULSO_INFO", "Error de conexión", e)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("PULSO_INFO", "Error inesperado", e)
         }
     }
 
     private fun mostrarPulsacionLocal(pacienteId: String) {
         pulsacionesDatabase.obtenerUltimaPulsacion(pacienteId)?.let(::pintarPulsacion)
+    }
+
+    private fun guardarYPintarPulsacion(medicion: com.beatwatch.app.data.model.MedicionResponse) {
+        val frecuencia = medicion.frecuenciaCardiacaBpm ?: return
+        val pulsacion = PulsacionLocal(
+            frecuenciaCardiacaBpm = frecuencia,
+            saturacionOxigenoSpO2 = medicion.saturacionOxigenoSpO2,
+            timestamp = medicion.timestamp
+        )
+        sessionManager.getPacienteId().takeIf { it.isNotBlank() }?.let {
+            pulsacionesDatabase.guardarUltimaPulsacion(it, pulsacion)
+        }
+        pintarPulsacion(pulsacion)
     }
 
     private fun pintarPulsacion(pulsacion: PulsacionLocal) {
@@ -233,7 +240,7 @@ class InicioFragment : Fragment() {
     }
 
     private companion object {
-        const val INTERVALO_ACTUALIZACION_PULSACIONES_MS = 30_000L
+        const val INTERVALO_ACTUALIZACION_PULSACIONES_MS = 5_000L
     }
 
     private fun cargarDispositivos() {
@@ -241,7 +248,6 @@ class InicioFragment : Fragment() {
         val pacienteId = sessionManager.getPacienteId()
 
         Log.d("SESSION_DEBUG", "JWT existe: ${jwt.isNotBlank()}")
-        Log.d("SESSION_DEBUG", "pacienteId actual: $pacienteId")
 
         if (jwt.isBlank()) {
             tvCargandoDispositivos.text = "Sesión inválida."
@@ -278,8 +284,7 @@ class InicioFragment : Fragment() {
                         emptyDispositivos.visibility = View.GONE
                     }
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("DISPOSITIVOS_GET", "ErrorBody: $errorBody")
+                    Log.e("DISPOSITIVOS_GET", "Error HTTP ${response.code()}")
 
                     tvCargandoDispositivos.text = "No se pudieron cargar los dispositivos."
                     rvDispositivos.visibility = View.GONE
@@ -388,8 +393,7 @@ class InicioFragment : Fragment() {
                         dialog.dismiss()
                         cargarDispositivos()
                     } else {
-                        val errorBody = response.errorBody()?.string()
-                        Log.e("DISPOSITIVOS_PUT", "ErrorBody: $errorBody")
+                        Log.e("DISPOSITIVOS_PUT", "Error HTTP ${response.code()}")
 
                         val mensaje = when (response.code()) {
                             400 -> "Datos inválidos. Verifica la información."
@@ -461,8 +465,7 @@ class InicioFragment : Fragment() {
                     Toast.makeText(context, "Dispositivo eliminado correctamente", Toast.LENGTH_SHORT).show()
                     cargarDispositivos()
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("DISPOSITIVOS_DELETE", "ErrorBody: $errorBody")
+                    Log.e("DISPOSITIVOS_DELETE", "Error HTTP ${response.code()}")
 
                     val mensaje = when (response.code()) {
                             401 -> {

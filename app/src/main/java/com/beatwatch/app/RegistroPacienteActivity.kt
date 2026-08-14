@@ -141,8 +141,6 @@ class RegistroPacienteActivity : AppCompatActivity() {
                 formatoApi.timeZone = TimeZone.getTimeZone("UTC")
                 fechaNacimientoIso = formatoApi.format(selectedCalendar.time)
 
-                Log.d("PACIENTE_API", "Fecha visual: ${etFechaNacimiento.text}")
-                Log.d("PACIENTE_API", "Fecha ISO enviada: $fechaNacimientoIso")
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
@@ -250,11 +248,6 @@ class RegistroPacienteActivity : AppCompatActivity() {
         val usuarioId = sessionManager.getUsuarioId()
         val idLicencia = sessionManager.getIdLicencia()
 
-        Log.d("SESSION_DEBUG", "RegistroPacienteActivity leyendo sesión")
-        Log.d("SESSION_DEBUG", "jwt existe: ${jwt.isNotBlank()}")
-        Log.d("SESSION_DEBUG", "usuarioId: $usuarioId")
-        Log.d("SESSION_DEBUG", "idLicencia: $idLicencia")
-        Log.d("SESSION_DEBUG", "isLoggedIn: ${sessionManager.isLoggedIn()}")
 
         if (jwt.isBlank() || usuarioId.isBlank() || idLicencia.isBlank()) {
             Toast.makeText(
@@ -289,11 +282,6 @@ class RegistroPacienteActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 Log.d("PACIENTE_API", "Endpoint: api/Pacientes/perfil")
-                Log.d("PACIENTE_API", "JWT existe: ${jwt.isNotBlank()}")
-                Log.d("PACIENTE_API", "usuarioId: ${request.usuarioId}")
-                Log.d("PACIENTE_API", "idLicencia: ${request.idLicencia}")
-                Log.d("PACIENTE_API", "fechaNacimientoIso: ${request.fechaNacimiento}")
-                Log.d("PACIENTE_API", "Request enviado: $request")
 
                 val response = pacienteRepository.registrarPerfilPaciente(jwt, request)
 
@@ -302,7 +290,6 @@ class RegistroPacienteActivity : AppCompatActivity() {
 
                 if (response.isSuccessful) {
                     val body = response.body()
-                    Log.d("PACIENTE_API", "Body: $body")
 
                     val pacienteId = body?.pacienteId
                         ?: body?.id
@@ -320,7 +307,6 @@ class RegistroPacienteActivity : AppCompatActivity() {
                     }
 
                     sessionManager.guardarPacienteId(pacienteId)
-                    Log.d("SESSION_DEBUG", "pacienteId guardado: $pacienteId")
 
                     sessionManager.guardarEstadoFormularios(
                         perfilCompletado = true,
@@ -340,8 +326,7 @@ class RegistroPacienteActivity : AppCompatActivity() {
                     startActivity(intent)
                     finish()
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("PACIENTE_API", "ErrorBody: $errorBody")
+                    Log.e("PACIENTE_API", "Error HTTP ${response.code()}")
 
                     val mensaje = when (response.code()) {
                         400 -> "Datos inválidos. Verifica la información."

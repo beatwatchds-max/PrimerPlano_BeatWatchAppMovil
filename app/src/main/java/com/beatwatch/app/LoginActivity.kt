@@ -56,7 +56,6 @@ class LoginActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                Log.d("LOGIN_API", "Enviando token: $token")
                 val response = authRepository.iniciarSesionMovil(token)
 
                 Log.d("LOGIN_API", "HTTP code: ${response.code()}")
@@ -64,8 +63,6 @@ class LoginActivity : AppCompatActivity() {
 
                 if (response.isSuccessful) {
                     val body = response.body()
-                    Log.d("LOGIN_API", "Body recibido: $body")
-
                     val jwt = body?.tokenJwt ?: body?.token ?: body?.accessToken ?: body?.jwt
 
                     val usuarioId = body?.usuarioId.orEmpty()
@@ -75,18 +72,10 @@ class LoginActivity : AppCompatActivity() {
                     val diagnosticoCompletado = body?.diagnosticoCompletado ?: false
                     val dispositivoVinculado = body?.dispositivoVinculado ?: false
 
-                    Log.d("LOGIN_FLOW", "Body login: $body")
                     Log.d("LOGIN_FLOW", "Login exitoso")
-                    Log.d("LOGIN_FLOW", "JWT existe: ${!jwt.isNullOrBlank()}")
-                    Log.d("LOGIN_FLOW", "usuarioId: $usuarioId")
-                    Log.d("LOGIN_FLOW", "idLicencia: $idLicencia")
-                    Log.d("LOGIN_FLOW", "pacienteId: $pacienteId")
-                    Log.d("LOGIN_FLOW", "perfilCompletado: $perfilCompletado")
-                    Log.d("LOGIN_FLOW", "diagnosticoCompletado: $diagnosticoCompletado")
-                    Log.d("LOGIN_FLOW", "dispositivoVinculado: $dispositivoVinculado")
 
                     if (jwt.isNullOrBlank()) {
-                        Log.e("LOGIN_API", "Token JWT vacío en respuesta: $body")
+                        Log.e("LOGIN_API", "Token JWT vacío en respuesta")
                         Toast.makeText(
                             this@LoginActivity,
                             "Token JWT vacío en respuesta",
@@ -96,7 +85,7 @@ class LoginActivity : AppCompatActivity() {
                     }
 
                     if (usuarioId.isBlank()) {
-                        Log.e("LOGIN_API", "usuarioId vacío en respuesta: $body")
+                        Log.e("LOGIN_API", "usuarioId vacío en respuesta")
                         Toast.makeText(
                             this@LoginActivity,
                             "Usuario inválido en respuesta",
@@ -106,7 +95,7 @@ class LoginActivity : AppCompatActivity() {
                     }
 
                     if (idLicencia.isBlank()) {
-                        Log.e("LOGIN_API", "idLicencia vacío en respuesta: $body")
+                        Log.e("LOGIN_API", "idLicencia vacío en respuesta")
                         Toast.makeText(
                             this@LoginActivity,
                             "Licencia inválida en respuesta",
@@ -136,15 +125,6 @@ class LoginActivity : AppCompatActivity() {
 
                     sessionManager.guardarDispositivoVinculado(dispositivoVinculado)
                     FcmTokenManager.fetchAndSync(this@LoginActivity)
-
-                    Log.d("SESSION_DEBUG", "Sesión guardada")
-                    Log.d("SESSION_DEBUG", "token existe: ${sessionManager.getToken().isNotBlank()}")
-                    Log.d("SESSION_DEBUG", "usuarioId guardado: ${sessionManager.getUsuarioId()}")
-                    Log.d("SESSION_DEBUG", "idLicencia guardada: ${sessionManager.getIdLicencia()}")
-                    Log.d("SESSION_DEBUG", "pacienteId guardado: ${sessionManager.getPacienteId()}")
-                    Log.d("SESSION_DEBUG", "perfilCompletado guardado: ${sessionManager.isPerfilCompletado()}")
-                    Log.d("SESSION_DEBUG", "diagnosticoCompletado guardado: ${sessionManager.isDiagnosticoCompletado()}")
-                    Log.d("SESSION_DEBUG", "dispositivoVinculado guardado: ${sessionManager.isDispositivoVinculado()}")
 
                     Toast.makeText(
                         this@LoginActivity,
@@ -183,8 +163,7 @@ class LoginActivity : AppCompatActivity() {
                         }
                     }
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("LOGIN_API", "Error HTTP ${response.code()}: $errorBody")
+                    Log.e("LOGIN_API", "Error HTTP ${response.code()}")
 
                     val mensaje = when (response.code()) {
                         400, 401 -> getString(R.string.error_invalid_token)

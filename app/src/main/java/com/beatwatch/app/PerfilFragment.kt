@@ -112,7 +112,6 @@ class PerfilFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                Log.d("PERFIL_API", "GET api/Pacientes/usuario/$usuarioId")
                 Log.d("PERFIL_API", "JWT existe: ${jwt.isNotBlank()}")
 
                 val response = pacienteRepository.obtenerPacientePorUsuarioId(jwt, usuarioId)
@@ -134,8 +133,7 @@ class PerfilFragment : Fragment() {
 
                     actualizarUI(paciente)
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("PERFIL_API", "ErrorBody GET: $errorBody")
+                    Log.e("PERFIL_API", "Error HTTP GET: ${response.code()}")
 
                     when (response.code()) {
                         401 -> {
@@ -380,8 +378,6 @@ class PerfilFragment : Fragment() {
 
             lifecycleScope.launch {
                 try {
-                    Log.d("PERFIL_API", "PATCH api/Pacientes/perfil/$usuarioId")
-                    Log.d("PERFIL_API", "Request PATCH: $request")
 
                     val response = pacienteRepository.actualizarPerfilPaciente(jwt, usuarioId, request)
 
@@ -393,8 +389,7 @@ class PerfilFragment : Fragment() {
                         dialog.dismiss()
                         cargarDatosPerfil()
                     } else {
-                        val errorBody = response.errorBody()?.string()
-                        Log.e("PERFIL_API", "ErrorBody PATCH: $errorBody")
+                        Log.e("PERFIL_API", "Error HTTP PATCH: ${response.code()}")
 
                         val mensaje = when (response.code()) {
                             400 -> "Datos inválidos. Verifica la información."

@@ -38,8 +38,6 @@ class InicioActivity : AppCompatActivity() {
         val pacienteId = sessionManager.getPacienteId()
 
         Log.d("INICIO_FLOW", "InicioActivity abierta")
-        Log.d("INICIO_FLOW", "nombre: $nombre")
-        Log.d("INICIO_FLOW", "pacienteId: $pacienteId")
         Log.d("INICIO_FLOW", "perfilCompletado: $perfilCompletado")
         Log.d("INICIO_FLOW", "diagnosticoCompletado: $diagnosticoCompletado")
 

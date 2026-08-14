@@ -141,7 +141,6 @@ class ConectarDispositivoActivity : AppCompatActivity() {
         Toast.makeText(this, "Emparejando dispositivo...", Toast.LENGTH_SHORT).show()
 
         Log.d("DEVICE_PAIR", "POST api/Dispositivos/emparejar")
-        Log.d("DEVICE_PAIR", "Request: $request")
 
         lifecycleScope.launch {
             try {
@@ -158,10 +157,10 @@ class ConectarDispositivoActivity : AppCompatActivity() {
 
                     cargarDispositivos()
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("DEVICE_PAIR_ERROR", "ErrorBody: $errorBody")
+                    Log.e("DEVICE_PAIR_ERROR", "Error HTTP ${response.code()}")
 
                     val mensajeBackend = try {
+                        val errorBody = response.errorBody()?.string().orEmpty()
                         val errorJson = gson.fromJson(errorBody, Map::class.java)
                         errorJson["message"] as? String ?: errorJson["mensaje"] as? String
                     } catch (e: Exception) {
@@ -216,8 +215,7 @@ class ConectarDispositivoActivity : AppCompatActivity() {
                         emptyDispositivos.visibility = View.GONE
                     }
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("DISPOSITIVOS_GET", "ErrorBody: $errorBody")
+                    Log.e("DISPOSITIVOS_GET", "Error HTTP ${response.code()}")
 
                     tvCargandoDispositivos.text = "No se pudieron cargar los dispositivos."
                 }
@@ -313,8 +311,7 @@ class ConectarDispositivoActivity : AppCompatActivity() {
                         dialog.dismiss()
                         cargarDispositivos()
                     } else {
-                        val errorBody = response.errorBody()?.string()
-                        Log.e("DISPOSITIVOS_PUT", "ErrorBody: $errorBody")
+                        Log.e("DISPOSITIVOS_PUT", "Error HTTP ${response.code()}")
                         Toast.makeText(this@ConectarDispositivoActivity, "No se pudo actualizar el alias.", Toast.LENGTH_LONG).show()
                         dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
                         dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardar"
@@ -372,8 +369,7 @@ class ConectarDispositivoActivity : AppCompatActivity() {
                     Toast.makeText(this@ConectarDispositivoActivity, "Dispositivo eliminado correctamente", Toast.LENGTH_SHORT).show()
                     cargarDispositivos()
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("DISPOSITIVOS_DELETE", "ErrorBody: $errorBody")
+                    Log.e("DISPOSITIVOS_DELETE", "Error HTTP ${response.code()}")
                     Toast.makeText(this@ConectarDispositivoActivity, "No se pudo eliminar el dispositivo.", Toast.LENGTH_LONG).show()
                 }
             } catch (e: IOException) {

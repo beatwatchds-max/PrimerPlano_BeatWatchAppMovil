@@ -182,12 +182,6 @@ class RegistroArritmiaActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 Log.d("ARRITMIA_API", "Endpoint: api/salud/arritmia")
-                Log.d("ARRITMIA_API", "JWT existe: ${jwt.isNotBlank()}")
-                Log.d("ARRITMIA_API", "idPaciente: ${request.idPaciente}")
-                Log.d("ARRITMIA_API", "tipo: ${request.tipo}")
-                Log.d("ARRITMIA_API", "frecuenciaCardiaca: ${request.frecuenciaCardiaca}")
-                Log.d("ARRITMIA_API", "duracionEpisodioSeconds: ${request.duracionEpisodioSeconds}")
-                Log.d("ARRITMIA_API", "Request enviado: $request")
 
                 val response = saludRepository.registrarArritmia(jwt, request)
 
@@ -195,9 +189,6 @@ class RegistroArritmiaActivity : AppCompatActivity() {
                 Log.d("ARRITMIA_API", "isSuccessful: ${response.isSuccessful}")
 
                 if (response.isSuccessful) {
-                    val rawBody = response.body()?.string().orEmpty()
-                    Log.d("ARRITMIA_API", "Body exitoso raw: $rawBody")
-
                     sessionManager.guardarEstadoFormularios(
                         perfilCompletado = true,
                         diagnosticoCompletado = true
@@ -216,8 +207,7 @@ class RegistroArritmiaActivity : AppCompatActivity() {
                     }
                     finish()
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("ARRITMIA_API", "ErrorBody: $errorBody")
+                    Log.e("ARRITMIA_API", "Error HTTP ${response.code()}")
 
                     val mensaje = when (response.code()) {
                         400 -> "Datos inválidos. Verifica la información."

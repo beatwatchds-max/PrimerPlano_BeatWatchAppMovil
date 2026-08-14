@@ -4,7 +4,6 @@ import com.beatwatch.app.data.api.RetrofitClient
 import com.beatwatch.app.data.model.ActualizarDispositivoRequest
 import com.beatwatch.app.data.model.DispositivoResponse
 import com.beatwatch.app.data.model.EmparejarDispositivoRequest
-import com.beatwatch.app.data.model.MedicionResponse
 import retrofit2.Response
 
 class DispositivoRepository {
@@ -17,10 +16,6 @@ class DispositivoRepository {
             authorization = "Bearer $jwt",
             idPaciente = pacienteId
         )
-    }
-
-    suspend fun obtenerUltimaMedicionFirebase(): Response<MedicionResponse> {
-        return RetrofitClient.medicionFirebaseApiService.obtenerUltimaMedicion()
     }
 
     suspend fun emparejarDispositivo(

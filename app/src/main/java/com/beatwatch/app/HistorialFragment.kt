@@ -60,8 +60,6 @@ class HistorialFragment : Fragment() {
         val jwt = sessionManager.getToken()
         val idPaciente = sessionManager.getPacienteId()
 
-        Log.d("ANALISIS_ML", "Endpoint: ${AnalisisRepository.BASE_URL}analysis/latest/$idPaciente")
-
         if (jwt.isBlank()) {
             Toast.makeText(requireContext(), "Sesión inválida. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
             redirigirLogin()
@@ -81,7 +79,7 @@ class HistorialFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                val response = analisisRepository.analizarUltimaEstadistica(idPaciente)
+                val response = analisisRepository.analizarUltimaEstadistica(jwt, idPaciente)
 
                 Log.d("ANALISIS_ML", "HTTP code: ${response.code()}")
 
@@ -99,9 +97,6 @@ class HistorialFragment : Fragment() {
 
                     datosCargados = true
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("HISTORIAL_API", "ErrorBody: $errorBody")
-
                     when (response.code()) {
                         400 -> {
                             tvHistorialError.visibility = View.VISIBLE
