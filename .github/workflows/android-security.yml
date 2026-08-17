@@ -29,10 +29,10 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: gradle
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: java-kotlin
           build-mode: manual
       - name: Validate and build debug APK
         run: bash gradlew lint test assembleDebug
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
