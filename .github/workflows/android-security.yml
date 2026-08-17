@@ -21,7 +21,7 @@ jobs:
           # Gitleaks compares the pull request commits against their parent.
           fetch-depth: 0
       - name: Scan for exposed secrets
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-java@v4
