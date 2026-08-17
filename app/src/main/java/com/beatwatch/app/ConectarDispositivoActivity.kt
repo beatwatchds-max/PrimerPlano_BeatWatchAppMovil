@@ -4,8 +4,8 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
-import android.util.Log
 import android.view.View
+import android.view.WindowManager
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -51,6 +51,7 @@ class ConectarDispositivoActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         setContentView(R.layout.activity_conectar_dispositivo)
 
         sessionManager = SessionManager.getInstance(this)
@@ -77,7 +78,6 @@ class ConectarDispositivoActivity : AppCompatActivity() {
 
         btnOmitir.setOnClickListener {
             sessionManager.guardarDispositivoVinculado(false)
-            Log.d("DISPOSITIVO_FLOW", "Dispositivo omitido. dispositivoVinculado: ${sessionManager.isDispositivoVinculado()}")
             Toast.makeText(this, "Puedes conectar tu dispositivo más tarde", Toast.LENGTH_LONG).show()
             startActivity(Intent(this, MainActivity::class.java))
             finish()
@@ -97,12 +97,21 @@ class ConectarDispositivoActivity : AppCompatActivity() {
     }
 
     private fun procesarCodigoQR(contenido: String) {
-        Log.d("DEVICE_QR", "QR leído: $contenido")
+        if (contenido.length > MAX_QR_PAYLOAD_LENGTH) {
+            Toast.makeText(this, "QR inválido: contenido demasiado largo", Toast.LENGTH_LONG).show()
+            return
+        }
 
         try {
             val payload = gson.fromJson(contenido, QrDevicePayload::class.java)
 
-            if (payload.idSesion.isBlank() || payload.tokenEmparejamiento.isBlank()) {
+            if (
+                payload.idSesion.isBlank() ||
+                payload.idSesion.length > MAX_SESSION_ID_LENGTH ||
+                payload.tokenEmparejamiento.isBlank() ||
+                payload.tokenEmparejamiento.length > MAX_PAIRING_TOKEN_LENGTH ||
+                payload.alias?.length ?: 0 > MAX_ALIAS_LENGTH
+            ) {
                 Toast.makeText(this, "QR inválido: faltan datos de emparejamiento", Toast.LENGTH_LONG).show()
                 return
             }
@@ -131,8 +140,7 @@ class ConectarDispositivoActivity : AppCompatActivity() {
 
             emparejarPorQR(jwt, request)
 
-        } catch (e: Exception) {
-            Log.e("DEVICE_QR", "Error al parsear QR: ${e.message}")
+        } catch (_: Exception) {
             Toast.makeText(this, "QR inválido. El código no contiene datos válidos del dispositivo.", Toast.LENGTH_LONG).show()
         }
     }
@@ -140,43 +148,23 @@ class ConectarDispositivoActivity : AppCompatActivity() {
     private fun emparejarPorQR(jwt: String, request: EmparejarDispositivoRequest) {
         Toast.makeText(this, "Emparejando dispositivo...", Toast.LENGTH_SHORT).show()
 
-        Log.d("DEVICE_PAIR", "POST api/Dispositivos/emparejar")
-
         lifecycleScope.launch {
             try {
                 val response = dispositivoRepository.emparejarDispositivo(jwt, request)
 
-                Log.d("DEVICE_PAIR_RESPONSE", "HTTP code: ${response.code()}")
-                Log.d("DEVICE_PAIR_RESPONSE", "isSuccessful: ${response.isSuccessful}")
-
                 if (response.isSuccessful) {
                     sessionManager.guardarDispositivoVinculado(true)
-                    Log.d("DISPOSITIVO_FLOW", "Dispositivo vinculado guardado: ${sessionManager.isDispositivoVinculado()}")
 
                     Toast.makeText(this@ConectarDispositivoActivity, "Dispositivo vinculado correctamente", Toast.LENGTH_LONG).show()
 
                     cargarDispositivos()
                 } else {
-                    Log.e("DEVICE_PAIR_ERROR", "Error HTTP ${response.code()}")
-
-                    val mensajeBackend = try {
-                        val errorBody = response.errorBody()?.string().orEmpty()
-                        val errorJson = gson.fromJson(errorBody, Map::class.java)
-                        errorJson["message"] as? String ?: errorJson["mensaje"] as? String
-                    } catch (e: Exception) {
-                        null
-                    }
-
-                    val mensaje = mensajeBackend
-                        ?: "No fue posible vincular el dispositivo"
-                    Toast.makeText(this@ConectarDispositivoActivity, mensaje, Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@ConectarDispositivoActivity, "No fue posible vincular el dispositivo.", Toast.LENGTH_LONG).show()
                 }
-            } catch (e: IOException) {
-                Log.e("DEVICE_PAIR_ERROR", "Error de conexión", e)
+            } catch (_: IOException) {
                 Toast.makeText(this@ConectarDispositivoActivity, "No se pudo conectar con el servidor", Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                Log.e("DEVICE_PAIR_ERROR", "Error inesperado", e)
-                Toast.makeText(this@ConectarDispositivoActivity, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
+            } catch (_: Exception) {
+                Toast.makeText(this@ConectarDispositivoActivity, "No fue posible vincular el dispositivo.", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -192,18 +180,11 @@ class ConectarDispositivoActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                Log.d("DISPOSITIVOS_GET", "GET api/Dispositivos iniciado")
-
                 val response = dispositivoRepository.obtenerDispositivos(jwt, pacienteId)
-
-                Log.d("DISPOSITIVOS_GET", "HTTP code: ${response.code()}")
-                Log.d("DISPOSITIVOS_GET", "cantidad recibida: ${response.body()?.size ?: 0}")
 
                 if (response.isSuccessful) {
                     val body = response.body().orEmpty()
                     val propios = body.filter { it.idPaciente == pacienteId }
-
-                    Log.d("DISPOSITIVOS_GET", "cantidad filtrada por paciente: ${propios.size}")
 
                     adapter.actualizarLista(propios)
 
@@ -215,15 +196,11 @@ class ConectarDispositivoActivity : AppCompatActivity() {
                         emptyDispositivos.visibility = View.GONE
                     }
                 } else {
-                    Log.e("DISPOSITIVOS_GET", "Error HTTP ${response.code()}")
-
                     tvCargandoDispositivos.text = "No se pudieron cargar los dispositivos."
                 }
-            } catch (e: IOException) {
-                Log.e("DISPOSITIVOS_GET", "Error de conexión", e)
+            } catch (_: IOException) {
                 tvCargandoDispositivos.text = "No se pudieron cargar los dispositivos."
-            } catch (e: Exception) {
-                Log.e("DISPOSITIVOS_GET", "Error inesperado", e)
+            } catch (_: Exception) {
                 tvCargandoDispositivos.text = "Error al cargar dispositivos."
             } finally {
                 tvCargandoDispositivos.visibility = View.GONE
@@ -272,6 +249,11 @@ class ConectarDispositivoActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            if (nuevoAlias.length > MAX_ALIAS_LENGTH) {
+                etAlias.error = "El alias no puede exceder $MAX_ALIAS_LENGTH caracteres"
+                return@setOnClickListener
+            }
+
             if (nuevoAlias == dispositivo.alias) {
                 Toast.makeText(this, "El alias es el mismo.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -298,32 +280,23 @@ class ConectarDispositivoActivity : AppCompatActivity() {
 
             lifecycleScope.launch {
                 try {
-                    Log.d("DISPOSITIVOS_PUT", "PUT api/Dispositivos/$id")
-                    Log.d("DISPOSITIVOS_PUT", "alias anterior: ${dispositivo.alias}")
-                    Log.d("DISPOSITIVOS_PUT", "alias nuevo: $nuevoAlias")
-
                     val response = dispositivoRepository.actualizarDispositivo(jwt, id, request)
-
-                    Log.d("DISPOSITIVOS_PUT", "HTTP code: ${response.code()}")
 
                     if (response.isSuccessful) {
                         Toast.makeText(this@ConectarDispositivoActivity, "Alias actualizado correctamente.", Toast.LENGTH_SHORT).show()
                         dialog.dismiss()
                         cargarDispositivos()
                     } else {
-                        Log.e("DISPOSITIVOS_PUT", "Error HTTP ${response.code()}")
                         Toast.makeText(this@ConectarDispositivoActivity, "No se pudo actualizar el alias.", Toast.LENGTH_LONG).show()
                         dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
                         dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardar"
                     }
-                } catch (e: IOException) {
-                    Log.e("DISPOSITIVOS_PUT", "Error de conexión", e)
+                } catch (_: IOException) {
                     Toast.makeText(this@ConectarDispositivoActivity, "No se pudo conectar con el servidor", Toast.LENGTH_LONG).show()
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardar"
-                } catch (e: Exception) {
-                    Log.e("DISPOSITIVOS_PUT", "Error inesperado", e)
-                    Toast.makeText(this@ConectarDispositivoActivity, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
+                } catch (_: Exception) {
+                    Toast.makeText(this@ConectarDispositivoActivity, "No se pudo actualizar el alias.", Toast.LENGTH_LONG).show()
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardar"
                 }
@@ -349,36 +322,35 @@ class ConectarDispositivoActivity : AppCompatActivity() {
             .setTitle("Eliminar dispositivo")
             .setMessage("¿Deseas eliminar este dispositivo?")
             .setPositiveButton("Eliminar") { _, _ ->
-                eliminarDispositivo(jwt, id, dispositivo)
+                eliminarDispositivo(jwt, id)
             }
             .setNegativeButton("Cancelar", null)
             .show()
     }
 
-    private fun eliminarDispositivo(jwt: String, id: String, dispositivo: DispositivoResponse) {
+    private fun eliminarDispositivo(jwt: String, id: String) {
         lifecycleScope.launch {
             try {
-                Log.d("DISPOSITIVOS_DELETE", "DELETE api/Dispositivos/$id")
-                Log.d("DISPOSITIVOS_DELETE", "alias: ${dispositivo.alias}")
-
                 val response = dispositivoRepository.eliminarDispositivo(jwt, id)
-
-                Log.d("DISPOSITIVOS_DELETE", "HTTP code: ${response.code()}")
 
                 if (response.isSuccessful) {
                     Toast.makeText(this@ConectarDispositivoActivity, "Dispositivo eliminado correctamente", Toast.LENGTH_SHORT).show()
                     cargarDispositivos()
                 } else {
-                    Log.e("DISPOSITIVOS_DELETE", "Error HTTP ${response.code()}")
                     Toast.makeText(this@ConectarDispositivoActivity, "No se pudo eliminar el dispositivo.", Toast.LENGTH_LONG).show()
                 }
-            } catch (e: IOException) {
-                Log.e("DISPOSITIVOS_DELETE", "Error de conexión", e)
+            } catch (_: IOException) {
                 Toast.makeText(this@ConectarDispositivoActivity, "No se pudo conectar con el servidor", Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                Log.e("DISPOSITIVOS_DELETE", "Error inesperado", e)
-                Toast.makeText(this@ConectarDispositivoActivity, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
+            } catch (_: Exception) {
+                Toast.makeText(this@ConectarDispositivoActivity, "No se pudo eliminar el dispositivo.", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    private companion object {
+        const val MAX_QR_PAYLOAD_LENGTH = 4096
+        const val MAX_SESSION_ID_LENGTH = 128
+        const val MAX_PAIRING_TOKEN_LENGTH = 2048
+        const val MAX_ALIAS_LENGTH = 80
     }
 }

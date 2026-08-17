@@ -2,7 +2,7 @@ package com.beatwatch.app
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import android.view.WindowManager
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
@@ -18,6 +18,7 @@ class InicioActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         setContentView(R.layout.activity_inicio)
 
         sessionManager = SessionManager.getInstance(this)
@@ -36,10 +37,6 @@ class InicioActivity : AppCompatActivity() {
         val perfilCompletado = sessionManager.isPerfilCompletado()
         val diagnosticoCompletado = sessionManager.isDiagnosticoCompletado()
         val pacienteId = sessionManager.getPacienteId()
-
-        Log.d("INICIO_FLOW", "InicioActivity abierta")
-        Log.d("INICIO_FLOW", "perfilCompletado: $perfilCompletado")
-        Log.d("INICIO_FLOW", "diagnosticoCompletado: $diagnosticoCompletado")
 
         if (nombre.isNotBlank()) {
             tvNombrePaciente.text = nombre

@@ -15,6 +15,10 @@ class SaludRepository {
         )
     }
 
+    suspend fun obtenerUltimaMedicionFirebase(): Response<MedicionResponse> {
+        return RetrofitClient.firebaseRealtimeApiService.obtenerUltimaMedicion()
+    }
+
     suspend fun registrarArritmia(
         jwt: String,
         request: RegistroArritmiaRequest

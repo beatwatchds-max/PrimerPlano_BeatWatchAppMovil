@@ -3,7 +3,7 @@ package com.beatwatch.app
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -41,6 +41,7 @@ class RegistroPacienteActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         setContentView(R.layout.activity_registro_paciente)
 
         sessionManager = SessionManager.getInstance(this)
@@ -281,12 +282,7 @@ class RegistroPacienteActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                Log.d("PACIENTE_API", "Endpoint: api/Pacientes/perfil")
-
                 val response = pacienteRepository.registrarPerfilPaciente(jwt, request)
-
-                Log.d("PACIENTE_API", "HTTP code: ${response.code()}")
-                Log.d("PACIENTE_API", "isSuccessful: ${response.isSuccessful}")
 
                 if (response.isSuccessful) {
                     val body = response.body()
@@ -297,7 +293,6 @@ class RegistroPacienteActivity : AppCompatActivity() {
                         ?: ""
 
                     if (pacienteId.isBlank()) {
-                        Log.e("SESSION_DEBUG", "No se recibió pacienteId en respuesta del perfil")
                         Toast.makeText(
                             this@RegistroPacienteActivity,
                             "No se pudo completar el registro del paciente.",
@@ -326,29 +321,25 @@ class RegistroPacienteActivity : AppCompatActivity() {
                     startActivity(intent)
                     finish()
                 } else {
-                    Log.e("PACIENTE_API", "Error HTTP ${response.code()}")
-
                     val mensaje = when (response.code()) {
                         400 -> "Datos inválidos. Verifica la información."
                         401 -> "Sesión expirada. Inicia sesión nuevamente."
                         404 -> "Endpoint no encontrado."
                         in 500..599 -> "Error del servidor. Intenta más tarde."
-                        else -> "Error del servidor: ${response.code()}"
+                        else -> "No se pudo completar el registro. Intenta más tarde."
                     }
                     Toast.makeText(this@RegistroPacienteActivity, mensaje, Toast.LENGTH_LONG).show()
                 }
-            } catch (e: IOException) {
-                Log.e("PACIENTE_API", "Error de conexión", e)
+            } catch (_: IOException) {
                 Toast.makeText(
                     this@RegistroPacienteActivity,
                     R.string.error_connection,
                     Toast.LENGTH_LONG
                 ).show()
-            } catch (e: Exception) {
-                Log.e("PACIENTE_API", "Error inesperado", e)
+            } catch (_: Exception) {
                 Toast.makeText(
                     this@RegistroPacienteActivity,
-                    "Error inesperado: ${e.message}",
+                    getString(R.string.error_server),
                     Toast.LENGTH_LONG
                 ).show()
             } finally {

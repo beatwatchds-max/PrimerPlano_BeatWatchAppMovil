@@ -2,8 +2,9 @@ package com.beatwatch.app.data.local
 
 import android.content.ContentValues
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
+import com.beatwatch.app.utils.SessionManager
+import net.sqlcipher.database.SQLiteDatabase
+import net.sqlcipher.database.SQLiteOpenHelper
 
 data class PulsacionLocal(
     val frecuenciaCardiacaBpm: Int,
@@ -17,6 +18,20 @@ class PulsacionesDatabase(context: Context) : SQLiteOpenHelper(
     null,
     DATABASE_VERSION
 ) {
+    private val appContext = context.applicationContext
+
+    init {
+        SQLiteDatabase.loadLibs(appContext)
+        // Las mediciones de la base previa no estaban cifradas; se descartan al migrar.
+        appContext.deleteDatabase(LEGACY_DATABASE_NAME)
+    }
+
+    private fun openWritableDatabase(): SQLiteDatabase =
+        super.getWritableDatabase(SessionManager.getInstance(appContext).getDatabasePassphrase())
+
+    private fun openReadableDatabase(): SQLiteDatabase =
+        super.getReadableDatabase(SessionManager.getInstance(appContext).getDatabasePassphrase())
+
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE $TABLE_PULSACIONES (" +
@@ -37,7 +52,7 @@ class PulsacionesDatabase(context: Context) : SQLiteOpenHelper(
                 ?: putNull(COLUMN_SATURACION)
             pulsacion.timestamp?.let { put(COLUMN_TIMESTAMP, it) } ?: putNull(COLUMN_TIMESTAMP)
         }
-        writableDatabase.insertWithOnConflict(
+        openWritableDatabase().insertWithOnConflict(
             TABLE_PULSACIONES,
             null,
             values,
@@ -46,7 +61,7 @@ class PulsacionesDatabase(context: Context) : SQLiteOpenHelper(
     }
 
     fun obtenerUltimaPulsacion(pacienteId: String): PulsacionLocal? {
-        readableDatabase.query(
+        openReadableDatabase().query(
             TABLE_PULSACIONES,
             arrayOf(COLUMN_FRECUENCIA, COLUMN_SATURACION, COLUMN_TIMESTAMP),
             "$COLUMN_PACIENTE_ID = ?",
@@ -65,7 +80,8 @@ class PulsacionesDatabase(context: Context) : SQLiteOpenHelper(
     }
 
     companion object {
-        private const val DATABASE_NAME = "beatwatch_pulsaciones.db"
+        const val DATABASE_NAME = "beatwatch_pulsaciones_secure.db"
+        private const val LEGACY_DATABASE_NAME = "beatwatch_pulsaciones.db"
         private const val DATABASE_VERSION = 1
         private const val TABLE_PULSACIONES = "pulsaciones"
         private const val COLUMN_PACIENTE_ID = "paciente_id"

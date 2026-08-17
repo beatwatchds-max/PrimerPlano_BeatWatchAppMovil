@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.beatwatch.app.data.local.PulsacionesDatabase
+import java.util.UUID
 
 class SessionManager private constructor(context: Context) {
 
@@ -41,6 +43,7 @@ class SessionManager private constructor(context: Context) {
         private const val KEY_DIAGNOSTICO_COMPLETADO = "diagnosticoCompletado"
         private const val KEY_DISPOSITIVO_VINCULADO = "dispositivoVinculado"
         private const val KEY_FCM_TOKEN = "fcmToken"
+        private const val KEY_DATABASE_PASSPHRASE = "databasePassphrase"
 
         private fun migratePlaintextSession(context: Context, securePrefs: SharedPreferences) {
             if (securePrefs.all.isNotEmpty()) return
@@ -73,12 +76,14 @@ class SessionManager private constructor(context: Context) {
         rol: String,
         idLicencia: String
     ) {
+        appContext.deleteDatabase(PulsacionesDatabase.DATABASE_NAME)
         prefs.edit()
             // Los datos clínicos pertenecen a la sesión anterior y no deben heredarse.
             .remove(KEY_PACIENTE_ID)
             .remove(KEY_PERFIL_COMPLETADO)
             .remove(KEY_DIAGNOSTICO_COMPLETADO)
             .remove(KEY_DISPOSITIVO_VINCULADO)
+            .remove(KEY_DATABASE_PASSPHRASE)
             .putString(KEY_TOKEN, token)
             .putString(KEY_USUARIO_ID, usuarioId)
             .putString(KEY_NOMBRE, nombre)
@@ -146,7 +151,14 @@ class SessionManager private constructor(context: Context) {
 
     fun isLoggedIn(): Boolean = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
 
+    fun getDatabasePassphrase(): String =
+        prefs.getString(KEY_DATABASE_PASSPHRASE, null)
+            ?: UUID.randomUUID().toString().also {
+                prefs.edit().putString(KEY_DATABASE_PASSPHRASE, it).apply()
+            }
+
     fun cerrarSesion() {
+        appContext.deleteDatabase(PulsacionesDatabase.DATABASE_NAME)
         prefs.edit().clear().apply()
     }
 }

@@ -5,7 +5,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
+import android.view.WindowManager
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -26,6 +26,7 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         setContentView(R.layout.activity_login)
 
         etToken = findViewById(R.id.etToken)
@@ -33,9 +34,8 @@ class LoginActivity : AppCompatActivity() {
         authRepository = AuthRepository()
         sessionManager = SessionManager.getInstance(this)
 
-        if (restaurarSesion()) return
-
         requestNotificationPermission()
+        if (restaurarSesion()) return
 
         btnLogin.setOnClickListener {
             val token = etToken.text.toString().trim()
@@ -58,9 +58,6 @@ class LoginActivity : AppCompatActivity() {
             try {
                 val response = authRepository.iniciarSesionMovil(token)
 
-                Log.d("LOGIN_API", "HTTP code: ${response.code()}")
-                Log.d("LOGIN_API", "isSuccessful: ${response.isSuccessful}")
-
                 if (response.isSuccessful) {
                     val body = response.body()
                     val jwt = body?.tokenJwt ?: body?.token ?: body?.accessToken ?: body?.jwt
@@ -72,10 +69,7 @@ class LoginActivity : AppCompatActivity() {
                     val diagnosticoCompletado = body?.diagnosticoCompletado ?: false
                     val dispositivoVinculado = body?.dispositivoVinculado ?: false
 
-                    Log.d("LOGIN_FLOW", "Login exitoso")
-
                     if (jwt.isNullOrBlank()) {
-                        Log.e("LOGIN_API", "Token JWT vacío en respuesta")
                         Toast.makeText(
                             this@LoginActivity,
                             "Token JWT vacío en respuesta",
@@ -85,7 +79,6 @@ class LoginActivity : AppCompatActivity() {
                     }
 
                     if (usuarioId.isBlank()) {
-                        Log.e("LOGIN_API", "usuarioId vacío en respuesta")
                         Toast.makeText(
                             this@LoginActivity,
                             "Usuario inválido en respuesta",
@@ -95,7 +88,6 @@ class LoginActivity : AppCompatActivity() {
                     }
 
                     if (idLicencia.isBlank()) {
-                        Log.e("LOGIN_API", "idLicencia vacío en respuesta")
                         Toast.makeText(
                             this@LoginActivity,
                             "Licencia inválida en respuesta",
@@ -139,32 +131,26 @@ class LoginActivity : AppCompatActivity() {
                         }
 
                         !perfilCompletado -> {
-                            Log.d("LOGIN_FLOW", "Perfil no completado -> RegistroPacienteActivity")
                             startActivity(Intent(this@LoginActivity, RegistroPacienteActivity::class.java))
                             finish()
                         }
 
                         perfilCompletado && !diagnosticoCompletado -> {
-                            Log.d("LOGIN_FLOW", "Perfil completado, diagnóstico no completado -> RegistroArritmiaActivity")
                             startActivity(Intent(this@LoginActivity, RegistroArritmiaActivity::class.java))
                             finish()
                         }
 
                         perfilCompletado && diagnosticoCompletado && !dispositivoVinculado -> {
-                            Log.d("LOGIN_FLOW", "Perfil y diagnóstico completados, dispositivo no vinculado -> ConectarDispositivoActivity")
                             startActivity(Intent(this@LoginActivity, ConectarDispositivoActivity::class.java))
                             finish()
                         }
 
                         perfilCompletado && diagnosticoCompletado && dispositivoVinculado -> {
-                            Log.d("LOGIN_FLOW", "Flujo completo, dispositivo vinculado -> MainActivity")
                             startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                             finish()
                         }
                     }
                 } else {
-                    Log.e("LOGIN_API", "Error HTTP ${response.code()}")
-
                     val mensaje = when (response.code()) {
                         400, 401 -> getString(R.string.error_invalid_token)
                         429 -> getString(R.string.error_too_many_attempts)
@@ -173,18 +159,16 @@ class LoginActivity : AppCompatActivity() {
                     }
                     Toast.makeText(this@LoginActivity, mensaje, Toast.LENGTH_LONG).show()
                 }
-            } catch (e: IOException) {
-                Log.e("LOGIN_API", "Error de conexión", e)
+            } catch (_: IOException) {
                 Toast.makeText(
                     this@LoginActivity,
                     getString(R.string.error_connection),
                     Toast.LENGTH_LONG
                 ).show()
-            } catch (e: Exception) {
-                Log.e("LOGIN_API", "Error inesperado", e)
+            } catch (_: Exception) {
                 Toast.makeText(
                     this@LoginActivity,
-                    "Error inesperado: ${e.message}",
+                    getString(R.string.error_server),
                     Toast.LENGTH_LONG
                 ).show()
             } finally {
@@ -199,6 +183,8 @@ class LoginActivity : AppCompatActivity() {
 
     private fun restaurarSesion(): Boolean {
         if (!sessionManager.isLoggedIn() || sessionManager.getToken().isBlank()) return false
+
+        FcmTokenManager.fetchAndSync(this)
 
         val destino = when {
             !esPaciente(sessionManager.getRol()) -> MainActivity::class.java

@@ -1,6 +1,7 @@
 package com.beatwatch.app
 
 import android.os.Bundle
+import android.view.WindowManager
 import android.widget.CheckBox
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -18,6 +19,7 @@ class FactoresRiesgoActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         setContentView(R.layout.activity_factores_riesgo)
 
         inicializarVistas()

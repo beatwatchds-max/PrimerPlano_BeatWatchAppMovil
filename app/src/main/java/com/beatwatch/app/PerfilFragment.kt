@@ -5,7 +5,6 @@ import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -112,12 +111,7 @@ class PerfilFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                Log.d("PERFIL_API", "JWT existe: ${jwt.isNotBlank()}")
-
                 val response = pacienteRepository.obtenerPacientePorUsuarioId(jwt, usuarioId)
-
-                Log.d("PERFIL_API", "HTTP code GET: ${response.code()}")
-                Log.d("PERFIL_API", "Body GET: ${response.body()}")
 
                 if (response.isSuccessful) {
                     val paciente = response.body()
@@ -133,8 +127,6 @@ class PerfilFragment : Fragment() {
 
                     actualizarUI(paciente)
                 } else {
-                    Log.e("PERFIL_API", "Error HTTP GET: ${response.code()}")
-
                     when (response.code()) {
                         401 -> {
                             Toast.makeText(requireContext(), "No se pudo autorizar la consulta. Intenta nuevamente.", Toast.LENGTH_LONG).show()
@@ -147,11 +139,10 @@ class PerfilFragment : Fragment() {
                         }
                     }
                 }
-            } catch (e: IOException) {
-                Log.e("PERFIL_API", "Error de conexión", e)
+            } catch (_: IOException) {
                 Toast.makeText(requireContext(), "No se pudo conectar con el servidor", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Log.e("PERFIL_API", "Error inesperado", e)
+            } catch (_: Exception) {
+                Toast.makeText(requireContext(), "No se pudo cargar el perfil. Intenta más tarde.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -213,12 +204,10 @@ class PerfilFragment : Fragment() {
                 if (response.isSuccessful) {
                     finalizarCierreSesion()
                 } else {
-                    Log.e("LOGOUT_API", "El servidor rechazó el cierre: ${response.code()}")
                     Toast.makeText(requireContext(), "No se pudo cerrar la sesión en el servidor.", Toast.LENGTH_LONG).show()
                     btnCerrarSesion.isEnabled = true
                 }
-            } catch (e: IOException) {
-                Log.w("LOGOUT_API", "No se pudo notificar el cierre de sesión", e)
+            } catch (_: IOException) {
                 Toast.makeText(requireContext(), "No se pudo conectar para cerrar la sesión.", Toast.LENGTH_LONG).show()
                 btnCerrarSesion.isEnabled = true
             }
@@ -381,16 +370,11 @@ class PerfilFragment : Fragment() {
 
                     val response = pacienteRepository.actualizarPerfilPaciente(jwt, usuarioId, request)
 
-                    Log.d("PERFIL_API", "HTTP code PATCH: ${response.code()}")
-                    Log.d("PERFIL_API", "isSuccessful PATCH: ${response.isSuccessful}")
-
                     if (response.isSuccessful) {
                         Toast.makeText(context, "Datos actualizados correctamente", Toast.LENGTH_SHORT).show()
                         dialog.dismiss()
                         cargarDatosPerfil()
                     } else {
-                        Log.e("PERFIL_API", "Error HTTP PATCH: ${response.code()}")
-
                         val mensaje = when (response.code()) {
                             400 -> "Datos inválidos. Verifica la información."
                             401 -> {
@@ -398,16 +382,14 @@ class PerfilFragment : Fragment() {
                             }
                             404 -> "Perfil no encontrado."
                             in 500..599 -> "Error del servidor. Intenta más tarde."
-                            else -> "Error inesperado: ${response.code()}"
+                            else -> "No se pudo actualizar el perfil. Intenta más tarde."
                         }
                         Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
                     }
-                } catch (e: IOException) {
-                    Log.e("PERFIL_API", "Error de conexión", e)
+                } catch (_: IOException) {
                     Toast.makeText(context, "No se pudo conectar con el servidor", Toast.LENGTH_LONG).show()
-                } catch (e: Exception) {
-                    Log.e("PERFIL_API", "Error inesperado", e)
-                    Toast.makeText(context, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
+                } catch (_: Exception) {
+                    Toast.makeText(context, "No se pudo actualizar el perfil. Intenta más tarde.", Toast.LENGTH_LONG).show()
                 }
             }
         }
