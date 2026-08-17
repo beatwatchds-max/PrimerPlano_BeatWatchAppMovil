@@ -2,7 +2,7 @@ package com.beatwatch.app
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.CheckBox
 import android.widget.EditText
@@ -42,6 +42,7 @@ class RegistroArritmiaActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         setContentView(R.layout.activity_registro_arritmia)
 
         sessionManager = SessionManager.getInstance(this)
@@ -118,7 +119,7 @@ class RegistroArritmiaActivity : AppCompatActivity() {
         if (duracionTexto.isEmpty()) {
             etDuracionEpisodio.error = "Ingresa la duración en minutos"
             esValido = false
-        } else if (duracionSegundos == null || duracionSegundos <= 0) {
+        } else if (duracionSegundos == null) {
             etDuracionEpisodio.error = "Ingresa un valor válido en minutos"
             esValido = false
         }
@@ -181,23 +182,9 @@ class RegistroArritmiaActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                Log.d("ARRITMIA_API", "Endpoint: api/salud/arritmia")
-                Log.d("ARRITMIA_API", "JWT existe: ${jwt.isNotBlank()}")
-                Log.d("ARRITMIA_API", "idPaciente: ${request.idPaciente}")
-                Log.d("ARRITMIA_API", "tipo: ${request.tipo}")
-                Log.d("ARRITMIA_API", "frecuenciaCardiaca: ${request.frecuenciaCardiaca}")
-                Log.d("ARRITMIA_API", "duracionEpisodioSeconds: ${request.duracionEpisodioSeconds}")
-                Log.d("ARRITMIA_API", "Request enviado: $request")
-
                 val response = saludRepository.registrarArritmia(jwt, request)
 
-                Log.d("ARRITMIA_API", "HTTP code: ${response.code()}")
-                Log.d("ARRITMIA_API", "isSuccessful: ${response.isSuccessful}")
-
                 if (response.isSuccessful) {
-                    val rawBody = response.body()?.string().orEmpty()
-                    Log.d("ARRITMIA_API", "Body exitoso raw: $rawBody")
-
                     sessionManager.guardarEstadoFormularios(
                         perfilCompletado = true,
                         diagnosticoCompletado = true
@@ -216,30 +203,25 @@ class RegistroArritmiaActivity : AppCompatActivity() {
                     }
                     finish()
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("ARRITMIA_API", "ErrorBody: $errorBody")
-
                     val mensaje = when (response.code()) {
                         400 -> "Datos inválidos. Verifica la información."
                         401 -> "Sesión expirada. Inicia sesión nuevamente."
                         404 -> "Endpoint no encontrado."
                         in 500..599 -> "Error del servidor. Intenta más tarde."
-                        else -> "Error inesperado: ${response.code()}"
+                        else -> "No se pudo guardar la información. Intenta más tarde."
                     }
                     Toast.makeText(this@RegistroArritmiaActivity, mensaje, Toast.LENGTH_LONG).show()
                 }
-            } catch (e: IOException) {
-                Log.e("ARRITMIA_API", "Error de conexión", e)
+            } catch (_: IOException) {
                 Toast.makeText(
                     this@RegistroArritmiaActivity,
                     "No se pudo conectar con el servidor",
                     Toast.LENGTH_LONG
                 ).show()
-            } catch (e: Exception) {
-                Log.e("ARRITMIA_API", "Error inesperado", e)
+            } catch (_: Exception) {
                 Toast.makeText(
                     this@RegistroArritmiaActivity,
-                    "Error inesperado: ${e.message}",
+                    getString(R.string.error_server),
                     Toast.LENGTH_LONG
                 ).show()
             } finally {
@@ -250,11 +232,8 @@ class RegistroArritmiaActivity : AppCompatActivity() {
     }
 
     private fun convertirMinutosASegundos(minutosTexto: String): Int? {
-        return try {
-            val minutos = minutosTexto.trim().toInt()
-            if (minutos <= 0) null else minutos * 60
-        } catch (e: Exception) {
-            null
-        }
+        val minutos = minutosTexto.trim().toLongOrNull() ?: return null
+        if (minutos <= 0 || minutos > Int.MAX_VALUE / 60) return null
+        return (minutos * 60).toInt()
     }
 }

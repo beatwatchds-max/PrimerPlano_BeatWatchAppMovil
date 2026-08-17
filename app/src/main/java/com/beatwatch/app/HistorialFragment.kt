@@ -2,7 +2,6 @@ package com.beatwatch.app
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,6 +9,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.LinearLayout
+import androidx.appcompat.widget.AppCompatButton
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.beatwatch.app.data.model.RecomendacionMl
@@ -28,6 +28,7 @@ class HistorialFragment : Fragment() {
     private lateinit var progressHistorial: ProgressBar
     private lateinit var tvHistorialVacio: TextView
     private lateinit var tvHistorialError: TextView
+    private lateinit var btnReintentarAnalisis: AppCompatButton
 
     private var datosCargados = false
 
@@ -50,6 +51,8 @@ class HistorialFragment : Fragment() {
         progressHistorial = view.findViewById(R.id.progressHistorial)
         tvHistorialVacio = view.findViewById(R.id.tvHistorialVacio)
         tvHistorialError = view.findViewById(R.id.tvHistorialError)
+        btnReintentarAnalisis = view.findViewById(R.id.btnReintentarAnalisis)
+        btnReintentarAnalisis.setOnClickListener { cargarAnalisis() }
 
         if (!datosCargados) {
             cargarAnalisis()
@@ -59,8 +62,6 @@ class HistorialFragment : Fragment() {
     private fun cargarAnalisis() {
         val jwt = sessionManager.getToken()
         val idPaciente = sessionManager.getPacienteId()
-
-        Log.d("ANALISIS_ML", "Endpoint: ${AnalisisRepository.BASE_URL}analysis/latest/$idPaciente")
 
         if (jwt.isBlank()) {
             Toast.makeText(requireContext(), "Sesión inválida. Inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
@@ -78,12 +79,11 @@ class HistorialFragment : Fragment() {
         progressHistorial.visibility = View.VISIBLE
         tvHistorialVacio.visibility = View.GONE
         tvHistorialError.visibility = View.GONE
+        btnReintentarAnalisis.visibility = View.GONE
 
         lifecycleScope.launch {
             try {
-                val response = analisisRepository.analizarUltimaEstadistica(idPaciente)
-
-                Log.d("ANALISIS_ML", "HTTP code: ${response.code()}")
+                val response = analisisRepository.analizarUltimaEstadistica(jwt, idPaciente)
 
                 progressHistorial.visibility = View.GONE
 
@@ -99,42 +99,39 @@ class HistorialFragment : Fragment() {
 
                     datosCargados = true
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("HISTORIAL_API", "ErrorBody: $errorBody")
-
                     when (response.code()) {
                         400 -> {
                             tvHistorialError.visibility = View.VISIBLE
                             tvHistorialError.text = "No se pudo analizar la información del paciente."
                         }
-                        401, 403 -> {
+                        401 -> cerrarSesionYRedirigir()
+                        403 -> {
                             tvHistorialError.visibility = View.VISIBLE
-                            tvHistorialError.text = "El servicio de recomendaciones rechazó sus credenciales."
+                            tvHistorialError.text = "No tienes permiso para consultar este paciente."
                         }
                         404 -> {
                             tvHistorialVacio.visibility = View.VISIBLE
-                            tvHistorialVacio.text = "No hay estadísticas diarias para generar recomendaciones."
+                            tvHistorialVacio.text = "Aún no hay análisis."
                         }
+                        503 -> mostrarMlNoDisponible()
                         in 500..599 -> {
                             tvHistorialError.visibility = View.VISIBLE
                             tvHistorialError.text = "Error del servidor. Intenta más tarde."
                         }
                         else -> {
                             tvHistorialError.visibility = View.VISIBLE
-                            tvHistorialError.text = "Error inesperado: ${response.code()}"
+                            tvHistorialError.text = "No se pudo obtener el análisis. Intenta más tarde."
                         }
                     }
                 }
-            } catch (e: IOException) {
-                Log.e("ANALISIS_ML", "Error de conexión", e)
+            } catch (_: IOException) {
                 progressHistorial.visibility = View.GONE
                 tvHistorialError.visibility = View.VISIBLE
                 tvHistorialError.text = "No se pudo conectar con el servidor."
-            } catch (e: Exception) {
-                Log.e("ANALISIS_ML", "Error inesperado", e)
+            } catch (_: Exception) {
                 progressHistorial.visibility = View.GONE
                 tvHistorialError.visibility = View.VISIBLE
-                tvHistorialError.text = "Error inesperado: ${e.message}"
+                tvHistorialError.text = "No se pudo obtener el análisis. Intenta más tarde."
             }
         }
     }
@@ -165,8 +162,24 @@ class HistorialFragment : Fragment() {
         }
     }
 
+    private fun mostrarMlNoDisponible() {
+        tvHistorialError.visibility = View.VISIBLE
+        tvHistorialError.text = "El servicio de análisis no está disponible."
+        btnReintentarAnalisis.visibility = View.VISIBLE
+    }
+
     private fun redirigirLogin() {
         startActivity(Intent(requireContext(), LoginActivity::class.java))
+        activity?.finish()
+    }
+
+    private fun cerrarSesionYRedirigir() {
+        sessionManager.cerrarSesion()
+        startActivity(
+            Intent(requireContext(), LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+        )
         activity?.finish()
     }
 }

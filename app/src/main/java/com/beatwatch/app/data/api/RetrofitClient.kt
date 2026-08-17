@@ -1,27 +1,21 @@
 package com.beatwatch.app.data.api
 
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import com.beatwatch.app.BuildConfig
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
     const val BASE_URL = "https://backend-beatwatch.onrender.com/"
+    private const val FIREBASE_REALTIME_DATABASE_URL = "https://bpm-g2-default-rtdb.firebaseio.com/"
 
-    private val okHttpClient = OkHttpClient.Builder().apply {
-        // Request and response bodies may include clinical data; log them only in debug builds.
-        if (BuildConfig.DEBUG) {
-            addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
-            })
-        }
-    }
-        .connectTimeout(60, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
+    private val okHttpClient = OkHttpClient.Builder()
+        // Render puede tardar más de un minuto en reanudar una instancia inactiva.
+        .connectTimeout(90, TimeUnit.SECONDS)
+        .readTimeout(90, TimeUnit.SECONDS)
+        .writeTimeout(90, TimeUnit.SECONDS)
+        .callTimeout(100, TimeUnit.SECONDS)
         .build()
 
     private val retrofit = Retrofit.Builder()
@@ -30,13 +24,17 @@ object RetrofitClient {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
-    private val firebaseRetrofit = Retrofit.Builder()
-        .baseUrl("https://bpm-g2-default-rtdb.firebaseio.com/")
+    private val firebaseRealtimeRetrofit = Retrofit.Builder()
+        .baseUrl(FIREBASE_REALTIME_DATABASE_URL)
         .client(okHttpClient)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
     val authApiService: AuthApiService = retrofit.create(AuthApiService::class.java)
+
+    val notificacionesApiService: NotificacionesApiService by lazy {
+        retrofit.create(NotificacionesApiService::class.java)
+    }
 
     val pacienteApiService: PacienteApiService by lazy {
         retrofit.create(PacienteApiService::class.java)
@@ -46,12 +44,12 @@ object RetrofitClient {
         retrofit.create(SaludApiService::class.java)
     }
 
-    val dispositivoApiService: DispositivoApiService by lazy {
-        retrofit.create(DispositivoApiService::class.java)
+    val firebaseRealtimeApiService: FirebaseRealtimeApiService by lazy {
+        firebaseRealtimeRetrofit.create(FirebaseRealtimeApiService::class.java)
     }
 
-    val medicionFirebaseApiService: MedicionFirebaseApiService by lazy {
-        firebaseRetrofit.create(MedicionFirebaseApiService::class.java)
+    val dispositivoApiService: DispositivoApiService by lazy {
+        retrofit.create(DispositivoApiService::class.java)
     }
 
     val historialApiService: HistorialApiService by lazy {
@@ -60,6 +58,10 @@ object RetrofitClient {
 
     val tableroApiService: TableroApiService by lazy {
         retrofit.create(TableroApiService::class.java)
+    }
+
+    val analisisApiService: AnalisisApiService by lazy {
+        retrofit.create(AnalisisApiService::class.java)
     }
 
 }

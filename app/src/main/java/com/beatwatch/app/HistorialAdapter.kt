@@ -2,7 +2,6 @@ package com.beatwatch.app
 
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,10 +12,6 @@ import com.beatwatch.app.data.model.HistorialResponse
 class HistorialAdapter(
     private val items: List<HistorialResponse>
 ) : RecyclerView.Adapter<HistorialAdapter.ViewHolder>() {
-
-    init {
-        Log.d("HISTORIAL_ADAPTER", "Items actuales: ${items.size}")
-    }
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvTipo: TextView = view.findViewById(R.id.tvTipoHistorial)

@@ -4,7 +4,6 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -22,8 +21,10 @@ import com.beatwatch.app.data.local.PulsacionLocal
 import com.beatwatch.app.data.local.PulsacionesDatabase
 import com.beatwatch.app.data.repository.DispositivoRepository
 import com.beatwatch.app.data.repository.PacienteRepository
+import com.beatwatch.app.data.repository.SaludRepository
 import com.beatwatch.app.ui.adapters.DispositivoAdapter
 import com.beatwatch.app.utils.SessionManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -39,6 +40,7 @@ class InicioFragment : Fragment() {
     private lateinit var sessionManager: SessionManager
     private lateinit var pacienteRepository: PacienteRepository
     private lateinit var dispositivoRepository: DispositivoRepository
+    private lateinit var saludRepository: SaludRepository
     private lateinit var pulsacionesDatabase: PulsacionesDatabase
 
     private lateinit var rvDispositivos: RecyclerView
@@ -63,6 +65,7 @@ class InicioFragment : Fragment() {
         sessionManager = SessionManager.getInstance(requireContext())
         pacienteRepository = PacienteRepository()
         dispositivoRepository = DispositivoRepository()
+        saludRepository = SaludRepository()
         pulsacionesDatabase = PulsacionesDatabase(requireContext())
 
         tvFrecuenciaCardiaca = view.findViewById(R.id.tvFrecuenciaCardiaca)
@@ -95,21 +98,20 @@ class InicioFragment : Fragment() {
         configurarListenersDispositivos()
     }
 
-    override fun onStart() {
-        super.onStart()
+    override fun onResume() {
+        super.onResume()
         iniciarActualizacionPulsaciones()
     }
 
-    override fun onStop() {
+    override fun onPause() {
         actualizacionPulsacionesJob?.cancel()
-        actualizacionPulsacionesJob = null
-        super.onStop()
+        super.onPause()
     }
 
     private fun iniciarActualizacionPulsaciones() {
         actualizacionPulsacionesJob?.cancel()
         actualizacionPulsacionesJob = viewLifecycleOwner.lifecycleScope.launch {
-            while (true) {
+            while (isAdded) {
                 cargarPrimerPulso()
                 delay(INTERVALO_ACTUALIZACION_PULSACIONES_MS)
             }
@@ -139,11 +141,7 @@ class InicioFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                Log.d("PACIENTE_INFO", "Endpoint: api/Pacientes/usuario/$usuarioId")
-
                 val response = pacienteRepository.obtenerPacientePorUsuarioId(jwt, usuarioId)
-
-                Log.d("PACIENTE_INFO", "HTTP code: ${response.code()}")
 
                 if (response.isSuccessful) {
                     val paciente = response.body()
@@ -171,9 +169,6 @@ class InicioFragment : Fragment() {
                     tvDetallesPaciente.text = "$edadTexto · $sangreTexto"
                     tvDiagnosticoPaciente.text = "Diagnóstico no disponible"
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("PACIENTE_INFO", "ErrorBody: $errorBody")
-
                     when (response.code()) {
                         401 -> {
                             Toast.makeText(requireContext(), "No se pudo autorizar la consulta. Intenta nuevamente.", Toast.LENGTH_LONG).show()
@@ -186,43 +181,71 @@ class InicioFragment : Fragment() {
                         }
                     }
                 }
-            } catch (e: IOException) {
-                Log.e("PACIENTE_INFO", "Error de conexión", e)
-            } catch (e: Exception) {
-                Log.e("PACIENTE_INFO", "Error inesperado", e)
+            } catch (_: IOException) {
+            } catch (_: Exception) {
             }
         }
     }
 
-    private fun cargarPrimerPulso() {
+    private suspend fun cargarPrimerPulso() {
         val pacienteId = sessionManager.getPacienteId()
-        if (pacienteId.isBlank()) return
+        val jwt = sessionManager.getToken()
+        if (pacienteId.isBlank() || jwt.isBlank()) return
 
-        lifecycleScope.launch {
-            try {
-                val response = dispositivoRepository.obtenerUltimaMedicionFirebase()
-                if (!response.isSuccessful) return@launch
-
-                val ultimaMedicion = response.body() ?: return@launch
-
-                val frecuencia = ultimaMedicion.frecuenciaCardiacaBpm ?: return@launch
-                val pulsacion = PulsacionLocal(
-                    frecuenciaCardiacaBpm = frecuencia,
-                    saturacionOxigenoSpO2 = ultimaMedicion.saturacionOxigenoSpO2,
-                    timestamp = ultimaMedicion.timestamp
-                )
-                pulsacionesDatabase.guardarUltimaPulsacion(pacienteId, pulsacion)
-                pintarPulsacion(pulsacion)
-            } catch (e: IOException) {
-                Log.e("PULSO_INFO", "Error de conexión", e)
-            } catch (e: Exception) {
-                Log.e("PULSO_INFO", "Error inesperado", e)
+        try {
+            val response = saludRepository.obtenerUltimaMedicion(jwt, pacienteId)
+            if (!response.isSuccessful) {
+                when (response.code()) {
+                    401 -> cerrarSesionYRedirigir()
+                    403 -> mostrarEstadoPulsacion("No tienes permiso para consultar este paciente.")
+                    else -> cargarPulsoDesdeFirebase()
+                }
+                return
             }
+
+            val ultimaMedicion = response.body() ?: return
+
+            guardarYPintarPulsacion(ultimaMedicion)
+        } catch (_: IOException) {
+            cargarPulsoDesdeFirebase()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            cargarPulsoDesdeFirebase()
+        }
+    }
+
+    private suspend fun cargarPulsoDesdeFirebase() {
+        try {
+            val response = saludRepository.obtenerUltimaMedicionFirebase()
+            val medicion = response.body()
+            if (response.isSuccessful && medicion?.frecuenciaCardiacaBpm != null) {
+                guardarYPintarPulsacion(medicion)
+            } else {
+                mostrarEstadoPulsacion("No se pudo cargar la medición.")
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: IOException) {
+            mostrarEstadoPulsacion("No se pudo cargar la medición.")
         }
     }
 
     private fun mostrarPulsacionLocal(pacienteId: String) {
         pulsacionesDatabase.obtenerUltimaPulsacion(pacienteId)?.let(::pintarPulsacion)
+    }
+
+    private fun guardarYPintarPulsacion(medicion: com.beatwatch.app.data.model.MedicionResponse) {
+        val frecuencia = medicion.frecuenciaCardiacaBpm ?: return
+        val pulsacion = PulsacionLocal(
+            frecuenciaCardiacaBpm = frecuencia,
+            saturacionOxigenoSpO2 = medicion.saturacionOxigenoSpO2,
+            timestamp = medicion.timestamp
+        )
+        sessionManager.getPacienteId().takeIf { it.isNotBlank() }?.let {
+            pulsacionesDatabase.guardarUltimaPulsacion(it, pulsacion)
+        }
+        pintarPulsacion(pulsacion)
     }
 
     private fun pintarPulsacion(pulsacion: PulsacionLocal) {
@@ -232,16 +255,29 @@ class InicioFragment : Fragment() {
         } ?: getString(R.string.dashboard_pulse_registered)
     }
 
+    private fun mostrarEstadoPulsacion(mensaje: String) {
+        tvFrecuenciaCardiaca.text = "--"
+        tvEstadoFrecuencia.text = mensaje
+    }
+
+    private fun cerrarSesionYRedirigir() {
+        actualizacionPulsacionesJob?.cancel()
+        sessionManager.cerrarSesion()
+        startActivity(
+            Intent(requireContext(), LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+        )
+        activity?.finish()
+    }
+
     private companion object {
-        const val INTERVALO_ACTUALIZACION_PULSACIONES_MS = 30_000L
+        const val INTERVALO_ACTUALIZACION_PULSACIONES_MS = 5_000L
     }
 
     private fun cargarDispositivos() {
         val jwt = sessionManager.getToken()
         val pacienteId = sessionManager.getPacienteId()
-
-        Log.d("SESSION_DEBUG", "JWT existe: ${jwt.isNotBlank()}")
-        Log.d("SESSION_DEBUG", "pacienteId actual: $pacienteId")
 
         if (jwt.isBlank()) {
             tvCargandoDispositivos.text = "Sesión inválida."
@@ -255,18 +291,11 @@ class InicioFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                Log.d("DISPOSITIVOS_GET", "GET api/Dispositivos iniciado")
-
                 val response = dispositivoRepository.obtenerDispositivos(jwt, pacienteId)
-
-                Log.d("DISPOSITIVOS_GET", "HTTP code: ${response.code()}")
-                Log.d("DISPOSITIVOS_GET", "cantidad recibida: ${response.body()?.size ?: 0}")
 
                 if (response.isSuccessful) {
                     val body = response.body().orEmpty()
                     val propios = body.filter { it.idPaciente == pacienteId }
-
-                    Log.d("DISPOSITIVOS_GET", "cantidad filtrada por paciente: ${propios.size}")
 
                     adapter.actualizarLista(propios)
 
@@ -278,18 +307,13 @@ class InicioFragment : Fragment() {
                         emptyDispositivos.visibility = View.GONE
                     }
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("DISPOSITIVOS_GET", "ErrorBody: $errorBody")
-
                     tvCargandoDispositivos.text = "No se pudieron cargar los dispositivos."
                     rvDispositivos.visibility = View.GONE
                     emptyDispositivos.visibility = View.VISIBLE
                 }
-            } catch (e: IOException) {
-                Log.e("DISPOSITIVOS_GET", "Error de conexión", e)
+            } catch (_: IOException) {
                 tvCargandoDispositivos.text = "No se pudieron cargar los dispositivos."
-            } catch (e: Exception) {
-                Log.e("DISPOSITIVOS_GET", "Error inesperado", e)
+            } catch (_: Exception) {
                 tvCargandoDispositivos.text = "Error al cargar dispositivos."
             } finally {
                 tvCargandoDispositivos.visibility = View.GONE
@@ -375,22 +399,13 @@ class InicioFragment : Fragment() {
 
             lifecycleScope.launch {
                 try {
-                    Log.d("DISPOSITIVOS_PUT", "PUT api/Dispositivos/$id")
-                    Log.d("DISPOSITIVOS_PUT", "alias anterior: ${dispositivo.alias}")
-                    Log.d("DISPOSITIVOS_PUT", "alias nuevo: $nuevoAlias")
-
                     val response = dispositivoRepository.actualizarDispositivo(jwt, id, request)
-
-                    Log.d("DISPOSITIVOS_PUT", "HTTP code: ${response.code()}")
 
                     if (response.isSuccessful) {
                         Toast.makeText(context, "Alias actualizado correctamente.", Toast.LENGTH_SHORT).show()
                         dialog.dismiss()
                         cargarDispositivos()
                     } else {
-                        val errorBody = response.errorBody()?.string()
-                        Log.e("DISPOSITIVOS_PUT", "ErrorBody: $errorBody")
-
                         val mensaje = when (response.code()) {
                             400 -> "Datos inválidos. Verifica la información."
                             401 -> {
@@ -398,21 +413,19 @@ class InicioFragment : Fragment() {
                             }
                             404 -> "Dispositivo no encontrado."
                             in 500..599 -> "Error del servidor. Intenta más tarde."
-                            else -> "Error inesperado: ${response.code()}"
+                            else -> "No se pudo actualizar el dispositivo. Intenta más tarde."
                         }
                         Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
 
                         dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
                         dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardar"
                     }
-                } catch (e: IOException) {
-                    Log.e("DISPOSITIVOS_PUT", "Error de conexión", e)
+                } catch (_: IOException) {
                     Toast.makeText(context, "No se pudo conectar con el servidor", Toast.LENGTH_LONG).show()
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardar"
-                } catch (e: Exception) {
-                    Log.e("DISPOSITIVOS_PUT", "Error inesperado", e)
-                    Toast.makeText(context, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
+                } catch (_: Exception) {
+                    Toast.makeText(context, "No se pudo actualizar el dispositivo. Intenta más tarde.", Toast.LENGTH_LONG).show()
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Guardar"
                 }
@@ -450,36 +463,26 @@ class InicioFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                Log.d("DISPOSITIVOS_DELETE", "DELETE api/Dispositivos/$id")
-                Log.d("DISPOSITIVOS_DELETE", "alias: ${dispositivo.alias}")
-
                 val response = dispositivoRepository.eliminarDispositivo(jwt, id)
-
-                Log.d("DISPOSITIVOS_DELETE", "HTTP code: ${response.code()}")
 
                 if (response.isSuccessful) {
                     Toast.makeText(context, "Dispositivo eliminado correctamente", Toast.LENGTH_SHORT).show()
                     cargarDispositivos()
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("DISPOSITIVOS_DELETE", "ErrorBody: $errorBody")
-
                     val mensaje = when (response.code()) {
                             401 -> {
                                 "No se pudo autorizar la eliminación. Intenta nuevamente."
                         }
                         404 -> "Dispositivo no encontrado."
                         in 500..599 -> "Error del servidor. Intenta más tarde."
-                        else -> "Error inesperado: ${response.code()}"
+                        else -> "No se pudo eliminar el dispositivo. Intenta más tarde."
                     }
                     Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
                 }
-            } catch (e: IOException) {
-                Log.e("DISPOSITIVOS_DELETE", "Error de conexión", e)
+            } catch (_: IOException) {
                 Toast.makeText(context, "No se pudo conectar con el servidor", Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                Log.e("DISPOSITIVOS_DELETE", "Error inesperado", e)
-                Toast.makeText(context, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
+            } catch (_: Exception) {
+                Toast.makeText(context, "No se pudo eliminar el dispositivo. Intenta más tarde.", Toast.LENGTH_LONG).show()
             }
         }
     }
