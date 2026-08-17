@@ -14,7 +14,7 @@ import com.beatwatch.app.LoginActivity
 import com.beatwatch.app.R
 
 object BeatWatchNotificationManager {
-    private const val CHANNEL_ID = "beatwatch_alerts"
+    const val CHANNEL_ID = "beatwatch_alerts"
 
     fun show(context: Context, title: String?, body: String?, alertId: String?) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -33,7 +33,7 @@ object BeatWatchNotificationManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title?.takeIf { it.isNotBlank() } ?: context.getString(R.string.app_name))
             .setContentText(notificationBody)
             .setStyle(NotificationCompat.BigTextStyle().bigText(notificationBody))
@@ -45,7 +45,7 @@ object BeatWatchNotificationManager {
         NotificationManagerCompat.from(context).notify(alertId?.hashCode() ?: System.currentTimeMillis().toInt(), notification)
     }
 
-    private fun createChannel(context: Context) {
+    fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             CHANNEL_ID,
